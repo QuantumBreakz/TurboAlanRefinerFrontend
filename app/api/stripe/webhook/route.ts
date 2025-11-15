@@ -14,9 +14,12 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   const sig = request.headers.get('stripe-signature')
   const secret = process.env.STRIPE_WEBHOOK_SECRET
+  const secretKey = process.env.STRIPE_SECRET_KEY
+  
   if (!sig || !secret) return NextResponse.json({ error: 'Webhook not configured' }, { status: 400 })
+  if (!secretKey) return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 })
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2022-11-15' })
+  const stripe = new Stripe(secretKey, { apiVersion: '2022-11-15' })
   let event: Stripe.Event
   try {
     const buf = Buffer.from(await request.arrayBuffer())

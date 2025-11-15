@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2022-11-15",
-})
+function getStripeClient(): Stripe | null {
+  const secretKey = process.env.STRIPE_SECRET_KEY
+  if (!secretKey) {
+    return null
+  }
+  return new Stripe(secretKey, {
+    apiVersion: "2022-11-15",
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const stripe = getStripeClient()
+    if (!stripe) {
+      return NextResponse.json({ error: "Stripe not configured" }, { status: 500 })
+    }
+    
     const { priceId, customer_email, metadata } = await request.json()
     if (!priceId) {
       return NextResponse.json({ error: "Missing priceId" }, { status: 400 })
