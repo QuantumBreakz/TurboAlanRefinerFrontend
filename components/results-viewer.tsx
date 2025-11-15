@@ -10,6 +10,7 @@ import BatchResults from "@/components/batch-results"
 import DiffViewer from "@/components/diff-viewer"
 import { useProcessing } from "@/contexts/ProcessingContext"
 import { refinerClient } from "@/lib/refiner-client"
+import { formatFilePath } from "@/lib/path-utils"
 
 interface ProcessedFile {
   id: string

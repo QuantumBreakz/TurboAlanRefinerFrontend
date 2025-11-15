@@ -78,11 +78,9 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       setError(null)
       
       const data = await refinerClient.getAnalytics()
-      
       setAnalytics(data)
       setLastUpdated(new Date())
     } catch (err) {
-      console.error("Failed to load analytics:", err)
       setError("Failed to load analytics data")
     } finally {
       setLoading(false)

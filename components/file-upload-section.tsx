@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFiles } from "@/contexts/FileContext"
 import { refinerClient } from "@/lib/refiner-client"
+import { formatFilePath } from "@/lib/path-utils"
 
 export default function FileUploadSection() {
   const { files, addFile, removeFile, updateFile } = useFiles()
@@ -53,13 +54,17 @@ export default function FileUploadSection() {
         
         if (response.ok) {
           const result = await response.json()
+          // Store actual path for backend, but display will be sanitized
+          const actualPath = result.temp_path || result.file_path || file.name
           updateFile(fileId, { 
             uploaded: true,
             status: "uploaded",
             // Use backend identifiers to drive refine payload
             driveId: result.file_id,
             // Backend returns temp_path; use that as source path
-            source: result.temp_path || result.file_path || file.name 
+            source: actualPath,
+            // Store display name separately
+            displayName: formatFilePath(actualPath, file.name)
           })
         } else {
           updateFile(fileId, { 

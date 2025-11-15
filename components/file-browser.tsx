@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { FolderOpen, FileText, Upload, Download } from "lucide-react"
+import { formatFilePath } from "@/lib/path-utils"
 
 interface FileBrowserProps {
   onFileSelect: (filePath: string) => void
@@ -71,7 +72,8 @@ export default function FileBrowser({
 
       if (response.ok) {
         const result = await response.json()
-        const filePath = result.temp_path
+        const filePath = result.temp_path || result.file_path || result.filename
+        // Store the actual path for backend, but display sanitized version
         setInputPath(filePath)
         onFileSelect(filePath)
         await loadAvailableFiles() // Refresh file list
@@ -190,7 +192,9 @@ export default function FileBrowser({
                 <Badge variant="outline" className="text-green-700">
                   Selected
                 </Badge>
-                <span className="text-sm text-green-700">{inputPath}</span>
+                <span className="text-sm text-green-700" title={inputPath}>
+                  {formatFilePath(inputPath, "Selected file")}
+                </span>
               </div>
             </div>
           )}

@@ -22,6 +22,10 @@ const OPENAI_PRICING = {
     input: 0.01, // $0.01 per 1K tokens
     output: 0.03  // $0.03 per 1K tokens
   },
+  'gpt-4o': {
+    input: 0.005, // $0.005 per 1K tokens
+    output: 0.015  // $0.015 per 1K tokens
+  },
   'gpt-3.5-turbo': {
     input: 0.0015, // $0.0015 per 1K tokens
     output: 0.002  // $0.002 per 1K tokens
@@ -80,14 +84,20 @@ interface AnalyticsResponse {
 
 export default function AdminAnalytics() {
   const { analytics: data, loading: isLoading, error } = useAnalytics()
-  const [selectedModel, setSelectedModel] = useState<'gpt-4' | 'gpt-4-turbo' | 'gpt-3.5-turbo'>('gpt-4')
+  const [selectedModel, setSelectedModel] = useState<'gpt-4' | 'gpt-4-turbo' | 'gpt-4o' | 'gpt-3.5-turbo'>('gpt-4')
 
   // Update selected model when data loads
   useMemo(() => {
     if (data?.openai?.current_model) {
-      const model = data.openai.current_model as 'gpt-4' | 'gpt-4-turbo' | 'gpt-3.5-turbo'
-      if (['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'].includes(model)) {
-        setSelectedModel(model)
+      const model = data.openai.current_model.toLowerCase()
+      if (model.includes('gpt-4o')) {
+        setSelectedModel('gpt-4o')
+      } else if (model.includes('gpt-4-turbo')) {
+        setSelectedModel('gpt-4-turbo')
+      } else if (model.includes('gpt-3.5')) {
+        setSelectedModel('gpt-3.5-turbo')
+      } else if (model.includes('gpt-4')) {
+        setSelectedModel('gpt-4')
       }
     }
   }, [data])
@@ -128,15 +138,15 @@ export default function AdminAnalytics() {
     }
 
     // Fallback to model pricing calculation
-    const pricing = OPENAI_PRICING[selectedModel]
+    const pricing = OPENAI_PRICING[selectedModel] || OPENAI_PRICING['gpt-4'] // Fallback to gpt-4 if model not found
     const totalTokensIn = normTokensIn(undefined)
     const totalTokensOut = normTokensOut(undefined)
     const totalRequests = Number(data.openai.total_requests || 0)
     const totalJobs = data.jobs?.totalJobs || 0
 
     // Calculate costs (pricing is per 1K tokens)
-    const inputCost = (totalTokensIn / 1000) * pricing.input
-    const outputCost = (totalTokensOut / 1000) * pricing.output
+    const inputCost = (totalTokensIn / 1000) * (pricing?.input || 0.03)
+    const outputCost = (totalTokensOut / 1000) * (pricing?.output || 0.06)
     const totalCost = inputCost + outputCost
 
     // Calculate per-request and per-pass costs
@@ -161,10 +171,10 @@ export default function AdminAnalytics() {
   const hourlyCosts = useMemo(() => {
     if (!data?.openai?.last_24h?.series) return []
     
-    const pricing = OPENAI_PRICING[selectedModel]
+    const pricing = OPENAI_PRICING[selectedModel] || OPENAI_PRICING['gpt-4'] // Fallback to gpt-4 if model not found
     return series.map(bucket => {
-      const inputCost = (Number(bucket.tokens_in ?? 0) / 1000) * pricing.input
-      const outputCost = (Number(bucket.tokens_out ?? 0) / 1000) * pricing.output
+      const inputCost = (Number(bucket.tokens_in ?? 0) / 1000) * (pricing?.input || 0.03)
+      const outputCost = (Number(bucket.tokens_out ?? 0) / 1000) * (pricing?.output || 0.06)
       return {
         hour: bucket.hour,
         cost: inputCost + outputCost,
@@ -189,6 +199,7 @@ export default function AdminAnalytics() {
           >
             <option value="gpt-4">GPT-4</option>
             <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            <option value="gpt-4o">GPT-4o</option>
             <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
           </select>
           {data?.openai?.current_model && (

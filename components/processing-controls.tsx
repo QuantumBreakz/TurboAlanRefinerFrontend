@@ -13,11 +13,12 @@ import { useSchema } from "@/contexts/SchemaContext"
 import FileBrowser from "./file-browser"
 import DownloadModal from "./download-modal"
 import { Download } from "lucide-react"
+import { formatFilePath } from "@/lib/path-utils"
 
 export default function ProcessingControls() {
   const { getUploadedFiles } = useFiles()
   const { processingEvents, addProcessingEvent, isProcessing, setIsProcessing, clearProcessingEvents } = useProcessing()
-  const { schemaLevels } = useSchema()
+  const { schemaLevels, applyPreset } = useSchema()
   const [selectedInputPath, setSelectedInputPath] = useState("")
   const [passProgress, setPassProgress] = useState<Map<number, {pass: number; status: "pending" | "running" | "completed"; inputChars?: number; outputChars?: number; currentStage?: string}>>(new Map())
   const [downloadModalOpen, setDownloadModalOpen] = useState(false)
@@ -28,6 +29,8 @@ export default function ProcessingControls() {
   const stuckCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isProcessingRef = useRef(isProcessing)
   const processingEventsRef = useRef(processingEvents)
+  const aggressivenessInitializedRef = useRef(false)
+  const lastAppliedAggressivenessRef = useRef<string | null>(null)
   const [settings, setSettings] = useState({
     passes: 3,
     aggressiveness: "auto",
@@ -91,6 +94,95 @@ export default function ProcessingControls() {
   useEffect(() => {
     localStorage.setItem('refiner-processing-settings', JSON.stringify(settings))
   }, [settings])
+
+  // Sync aggressiveness with schema controls
+  useEffect(() => {
+    // Define aggressiveness presets
+    const aggressivenessPresets: Record<string, Record<string, number>> = {
+      "low": {
+        microstructure_control: 1,
+        macrostructure_analysis: 0,
+        anti_scanner_techniques: 1,
+        entropy_management: 1,
+        semantic_tone_tuning: 0,
+        formatting_safeguards: 3,
+        refiner_control: 1,
+        history_analysis: 1,
+        annotation_mode: 0,
+        humanize_academic: 1,
+      },
+      "medium": {
+        microstructure_control: 2,
+        macrostructure_analysis: 1,
+        anti_scanner_techniques: 2,
+        entropy_management: 2,
+        semantic_tone_tuning: 1,
+        formatting_safeguards: 3,
+        refiner_control: 2,
+        history_analysis: 1,
+        annotation_mode: 0,
+        humanize_academic: 2,
+      },
+      "high": {
+        microstructure_control: 3,
+        macrostructure_analysis: 2,
+        anti_scanner_techniques: 3,
+        entropy_management: 3,
+        semantic_tone_tuning: 2,
+        formatting_safeguards: 2,
+        refiner_control: 3,
+        history_analysis: 2,
+        annotation_mode: 1,
+        humanize_academic: 3,
+      },
+      "very-high": {
+        microstructure_control: 3,
+        macrostructure_analysis: 3,
+        anti_scanner_techniques: 3,
+        entropy_management: 3,
+        semantic_tone_tuning: 3,
+        formatting_safeguards: 2,
+        refiner_control: 3,
+        history_analysis: 3,
+        annotation_mode: 2,
+        humanize_academic: 3,
+      },
+      "auto": {
+        // Auto mode uses balanced defaults (medium preset)
+        microstructure_control: 2,
+        macrostructure_analysis: 1,
+        anti_scanner_techniques: 2,
+        entropy_management: 2,
+        semantic_tone_tuning: 1,
+        formatting_safeguards: 3,
+        refiner_control: 2,
+        history_analysis: 1,
+        annotation_mode: 0,
+        humanize_academic: 2,
+      },
+    }
+
+    // Skip on initial mount to avoid overriding user settings
+    if (!aggressivenessInitializedRef.current) {
+      aggressivenessInitializedRef.current = true
+      lastAppliedAggressivenessRef.current = settings.aggressiveness
+      return
+    }
+
+    // Only apply preset if aggressiveness actually changed
+    if (lastAppliedAggressivenessRef.current === settings.aggressiveness) {
+      return
+    }
+
+    // Apply preset when aggressiveness changes
+    const preset = aggressivenessPresets[settings.aggressiveness]
+    if (preset) {
+      lastAppliedAggressivenessRef.current = settings.aggressiveness
+      applyPreset(preset)
+      localStorage.setItem('refiner-last-aggressiveness', settings.aggressiveness)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.aggressiveness])
 
   // Save file selection to localStorage whenever it changes
   useEffect(() => {

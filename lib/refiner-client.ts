@@ -232,29 +232,55 @@ export class RefinerClient {
                   const backend = process.env.NEXT_PUBLIC_REFINER_BACKEND_WS_URL || (this.baseUrl ? this.baseUrl : "")
                   if (backend) {
                     const wsBase = backend.replace(/^http/, "ws").replace(/\/$/, "")
-                    ws = new WebSocket(`${wsBase}/ws/progress/${jobId}`)
+                    const wsUrl = `${wsBase}/ws/progress/${jobId}`
+                    
+                    // Small delay to ensure backend is ready
+                    await new Promise(resolve => setTimeout(resolve, 100))
+                    
+                    ws = new WebSocket(wsUrl)
+                    let wsConnected = false
+                    
+                    ws.onopen = () => {
+                      wsConnected = true
+                      console.log(`WebSocket connected for job ${jobId}`)
+                    }
+                    
                     ws.onmessage = (m) => {
                       try {
                         const e = JSON.parse(String(m.data))
                         if (e && e.type) {
-                          
-                          onEvent(e)
+                          // Ignore heartbeat messages to reduce noise
+                          if (e.type !== "heartbeat") {
+                            onEvent(e)
+                          }
                           // Don't stop here - stream cleanup handles it
                         }
-                      } catch {}
+                      } catch (err) {
+                        console.warn("Failed to parse WebSocket message:", err)
+                      }
                     }
-                    ws.onerror = () => {
-                      
-                      // fallback to polling only if not already terminated
-                      if (!isTerminated && !pollTimer) startPolling()
+                    
+                    ws.onerror = (error) => {
+                      console.warn(`WebSocket error for job ${jobId}:`, error)
+                      // Only fallback to polling if connection never established
+                      if (!wsConnected && !isTerminated && !pollTimer) {
+                        console.log("Falling back to polling due to WebSocket error")
+                        startPolling()
+                      }
                     }
+                    
                     ws.onclose = (closeEvent) => {
-                      
-                      // only poll on abnormal close and not terminated
-                      if (!isTerminated && !pollTimer && closeEvent.code !== 1000) startPolling()
+                      console.log(`WebSocket closed for job ${jobId}, code: ${closeEvent.code}, reason: ${closeEvent.reason}`)
+                      wsConnected = false
+                      // Only poll on abnormal close (not normal closure) and not terminated
+                      if (!isTerminated && !pollTimer && closeEvent.code !== 1000 && closeEvent.code !== 1001) {
+                        console.log("Falling back to polling due to abnormal WebSocket close")
+                        startPolling()
+                      }
                     }
                   } else {
                     // No backend URL exposed for WS, fallback
+                    console.log("No backend WebSocket URL configured, using polling")
                     if (!isTerminated && !pollTimer) startPolling()
                   }
                 } catch {

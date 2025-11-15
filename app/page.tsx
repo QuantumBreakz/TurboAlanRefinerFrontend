@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-
-export const dynamic = 'force-dynamic'
 import Header from "@/components/header"
 import ShaderBackground from "@/components/shader-background"
 import PulsingCircle from "@/components/pulsing-circle"

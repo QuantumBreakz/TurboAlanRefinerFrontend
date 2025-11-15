@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 
-// Lazy initialization to avoid build-time errors when env vars are missing
-function getStripe(): Stripe {
-  const secretKey = process.env.STRIPE_SECRET_KEY
-  if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not configured")
-  }
-  return new Stripe(secretKey, {
-    apiVersion: "2022-11-15",
-  })
-}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2022-11-15",
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,8 +11,6 @@ export async function POST(request: NextRequest) {
     if (!priceId) {
       return NextResponse.json({ error: "Missing priceId" }, { status: 400 })
     }
-    
-    const stripe = getStripe()
     const origin = request.nextUrl.origin
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],

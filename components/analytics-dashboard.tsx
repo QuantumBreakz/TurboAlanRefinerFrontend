@@ -348,6 +348,149 @@ export default function AnalyticsDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* OpenAI Usage Statistics */}
+      {rawAnalytics?.openai && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-card-foreground">OpenAI Usage & Costs</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Model: {rawAnalytics.openai.current_model || "gpt-4"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-foreground">
+                  ${(rawAnalytics.openai.total_cost || 0).toFixed(4)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Total Cost</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-foreground">
+                  {rawAnalytics.openai.total_requests || 0}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Total Requests</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-foreground">
+                  {(rawAnalytics.openai.total_tokens_in || 0).toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Input Tokens</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-foreground">
+                  {(rawAnalytics.openai.total_tokens_out || 0).toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Output Tokens</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground mb-1">Per Request</div>
+                <div className="text-lg font-semibold text-foreground">
+                  ${rawAnalytics.openai.total_requests > 0 
+                    ? (rawAnalytics.openai.total_cost / rawAnalytics.openai.total_requests).toFixed(4)
+                    : "0.0000"}
+                </div>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground mb-1">Input Cost</div>
+                <div className="text-lg font-semibold text-foreground">
+                  ${((rawAnalytics.openai.total_tokens_in || 0) / 1000 * 0.03).toFixed(4)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {(rawAnalytics.openai.total_tokens_in || 0).toLocaleString()} tokens × $0.03/1K
+                </div>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground mb-1">Output Cost</div>
+                <div className="text-lg font-semibold text-foreground">
+                  ${((rawAnalytics.openai.total_tokens_out || 0) / 1000 * 0.06).toFixed(4)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {(rawAnalytics.openai.total_tokens_out || 0).toLocaleString()} tokens × $0.06/1K
+                </div>
+              </div>
+            </div>
+
+            {rawAnalytics.openai.last_24h && (
+              <div className="mt-6 p-4 bg-muted rounded-lg">
+                <div className="text-sm font-medium text-foreground mb-2">Last 24 Hours</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Cost</div>
+                    <div className="text-lg font-semibold text-foreground">
+                      ${(rawAnalytics.openai.last_24h.cost || 0).toFixed(4)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Requests</div>
+                    <div className="text-lg font-semibold text-foreground">
+                      {rawAnalytics.openai.last_24h.requests || 0}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">In Tokens</div>
+                    <div className="text-lg font-semibold text-foreground">
+                      {(rawAnalytics.openai.last_24h.tokens_in || 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Out Tokens</div>
+                    <div className="text-lg font-semibold text-foreground">
+                      {(rawAnalytics.openai.last_24h.tokens_out || 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Schema Usage Statistics */}
+      {rawAnalytics?.schema_usage && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-card-foreground">Schema Usage Statistics</CardTitle>
+            <CardDescription className="text-muted-foreground">Tracking schema activations and usage patterns</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-foreground">
+                  {rawAnalytics.schema_usage.total_usages || 0}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Total Usages</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-lg font-semibold text-foreground">
+                  {rawAnalytics.schema_usage.most_used_schema || "None"}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Most Used ({rawAnalytics.schema_usage.most_used_count || 0} times)
+                </div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-lg font-semibold text-foreground">
+                  {rawAnalytics.schema_usage.least_used_schema || "None"}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Least Used ({rawAnalytics.schema_usage.least_used_count || 0} times)
+                </div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-foreground">
+                  {(rawAnalytics.schema_usage.average_usage || 0).toFixed(1)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Avg Usage</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
