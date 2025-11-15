@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 
-export default function GlobalLoadingBar() {
+function GlobalLoadingBarContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const pathname = usePathname()
@@ -55,3 +55,10 @@ export default function GlobalLoadingBar() {
   )
 }
 
+export default function GlobalLoadingBar() {
+  return (
+    <Suspense fallback={null}>
+      <GlobalLoadingBarContent />
+    </Suspense>
+  )
+}
