@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import ProgressTracker from "@/components/progress-tracker"
-import AnalyticsDashboard from "@/components/analytics-dashboard"
+// Temporarily commented out until fixed
+// import AnalyticsDashboard from "@/components/analytics-dashboard"
 import BatchResults from "@/components/batch-results"
 import DiffViewer from "@/components/diff-viewer"
 import { useProcessing } from "@/contexts/ProcessingContext"
@@ -33,7 +34,8 @@ interface ProcessedFile {
 }
 
 export default function ResultsViewer() {
-  const [activeView, setActiveView] = useState<"results" | "analytics" | "batch" | "diff">("results")
+  // Temporarily removed "analytics" from activeView until fixed
+  const [activeView, setActiveView] = useState<"results" | "batch" | "diff">("results")
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -379,7 +381,8 @@ export default function ResultsViewer() {
         >
           Batch Results
         </Button>
-        <Button
+        {/* Temporarily commented out Analytics tab until fixed */}
+        {/* <Button
           variant={activeView === "analytics" ? "default" : "ghost"}
           onClick={() => setActiveView("analytics")}
           className={
@@ -388,8 +391,8 @@ export default function ResultsViewer() {
               : "text-gray-700 hover:bg-white/80 hover:text-black"
           }
         >
-          Analytics
-        </Button>
+            Analytics
+          </Button> */}
         <Button
           variant={activeView === "diff" ? "default" : "ghost"}
           onClick={() => setActiveView("diff")}
@@ -629,7 +632,11 @@ export default function ResultsViewer() {
           )}
         </div>
       ) : (
-        <AnalyticsDashboard />
+        // Temporarily commented out AnalyticsDashboard until fixed
+        // <AnalyticsDashboard />
+        <div className="text-center py-12 text-gray-500">
+          Analytics tab temporarily disabled
+        </div>
       )}
     </div>
   )
