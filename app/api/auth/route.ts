@@ -211,7 +211,8 @@ async function handleSignupFallback(data: SignupRequest) {
 
   try {
     // Generate a simple user ID
-    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    // Generate a proper UUID for the user ID (database expects UUID format)
+    const userId = crypto.randomUUID()
     console.log("Generated userId:", userId)
     
     // Hash password if bcrypt is available
@@ -462,38 +463,42 @@ async function handleGoogleSigninWithSupabase(data: GoogleSigninRequest) {
 
   if (fetchError || !existingUser) {
     // Create new user
-    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    // Generate a proper UUID for the user ID (database expects UUID format)
+    const userId = crypto.randomUUID()
     
-    // Build insert object - only include avatar_url if column exists
-    // We'll try without it first, or make it optional
+    // Build insert object with only required columns first
     const insertData: any = {
       id: userId,
       email: email.toLowerCase(),
       first_name: firstName || '',
       last_name: lastName || '',
       password_hash: '', // No password for Google OAuth users
-      google_id: googleId,
       is_active: true,
       role: 'user',
       settings: {},
     }
     
-    // Try to include avatar_url, but don't fail if column doesn't exist
+    // Try inserting with optional columns first
+    let insertWithOptional = { ...insertData }
+    if (googleId) {
+      insertWithOptional.google_id = googleId
+    }
     if (avatarUrl) {
-      insertData.avatar_url = avatarUrl
+      insertWithOptional.avatar_url = avatarUrl
     }
     
     const { data: newUser, error: insertError } = await supabase
       .from('users')
-      .insert(insertData)
+      .insert(insertWithOptional)
       .select()
       .single()
 
     if (insertError) {
       console.error("Failed to create user:", insertError)
-      // If it's a column error, try without avatar_url
-      if (insertError.message && insertError.message.includes('avatar_url')) {
-        delete insertData.avatar_url
+      // If it's a column error, try without optional columns
+      const errorMsg = insertError.message || ''
+      if (errorMsg.includes('avatar_url') || errorMsg.includes('google_id')) {
+        // Retry with only required columns (no optional columns)
         const { data: retryUser, error: retryError } = await supabase
           .from('users')
           .insert(insertData)
@@ -512,34 +517,51 @@ async function handleGoogleSigninWithSupabase(data: GoogleSigninRequest) {
       user = newUser
     }
   } else {
-    // Update existing user with Google ID if not set
-    // Build update object dynamically to avoid errors if columns don't exist
+    // Update existing user - only update columns that exist
     const updateData: any = {
       last_login_at: new Date().toISOString(),
     }
     
-    if (!existingUser.google_id) {
-      updateData.google_id = googleId
+    // Try to update optional columns, but handle errors gracefully
+    // First try with optional columns
+    let updateWithOptional = { ...updateData }
+    if (googleId && !existingUser.google_id) {
+      updateWithOptional.google_id = googleId
     }
-    
-    // Only add avatar_url if the column exists (check by trying a safe update)
-    // For now, we'll try to update it, but handle the error gracefully
     if (avatarUrl) {
-      updateData.avatar_url = avatarUrl
+      updateWithOptional.avatar_url = avatarUrl
     }
 
     const { data: updatedUser, error: updateError } = await supabase
       .from('users')
-      .update(updateData)
+      .update(updateWithOptional)
       .eq('id', existingUser.id)
       .select()
       .single()
 
     if (updateError) {
-      // If update fails (e.g., column doesn't exist), log but continue with existing user
-      console.warn("Failed to update user (non-critical):", updateError.message)
-      // Still use existing user - the update failure is not critical
-      user = existingUser
+      // If update fails due to missing columns, try without optional columns
+      const errorMsg = updateError.message || ''
+      if (errorMsg.includes('avatar_url') || errorMsg.includes('google_id')) {
+        // Retry with only required columns
+        const { data: retryUser, error: retryError } = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', existingUser.id)
+          .select()
+          .single()
+        
+        if (retryError) {
+          console.warn("Failed to update user (non-critical):", retryError.message)
+          user = existingUser
+        } else {
+          user = retryUser || existingUser
+        }
+      } else {
+        // Other error - log but continue with existing user
+        console.warn("Failed to update user (non-critical):", updateError.message)
+        user = existingUser
+      }
     } else {
       user = updatedUser || existingUser
     }

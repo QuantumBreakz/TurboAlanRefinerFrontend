@@ -52,15 +52,16 @@ export default function AuthModal({ isOpen, onClose, onAuthenticated }: AuthModa
     setError("")
     
     // Check if Google OAuth is configured
-    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
-      setError("Google OAuth is not configured. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables. See GOOGLE_OAUTH_SETUP.md for instructions.")
+    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    if (!googleClientId) {
+      setError("Google OAuth is not configured. Please contact support.")
       return
     }
     
     setIsLoading(true)
     startLoading("Connecting to Google...")
     
-    // Redirect to Google OAuth
+    // Redirect to Google OAuth (server will handle state generation and OAuth flow)
     window.location.href = '/api/auth/google'
   }
 

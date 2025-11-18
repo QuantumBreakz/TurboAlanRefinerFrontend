@@ -162,15 +162,16 @@ export default function SignupModal({ isOpen, onClose, onSignupSuccess, onSwitch
     setError("")
     
     // Check if Google OAuth is configured
-    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
-      setError("Google OAuth is not configured. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables. See GOOGLE_OAUTH_SETUP.md for instructions.")
+    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    if (!googleClientId) {
+      setError("Google OAuth is not configured. Please contact support.")
       return
     }
     
     setIsLoading(true)
     startLoading("Connecting to Google...")
     
-    // Redirect to Google OAuth
+    // Redirect to Google OAuth (server will handle state generation and OAuth flow)
     window.location.href = '/api/auth/google'
   }
 
@@ -202,7 +203,8 @@ export default function SignupModal({ isOpen, onClose, onSignupSuccess, onSwitch
             <div className="space-y-4">
               <Button
                 onClick={handleGoogleSignup}
-                className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white hover:from-yellow-500 hover:to-yellow-600 border-0"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white hover:from-yellow-500 hover:to-yellow-600 border-0 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path

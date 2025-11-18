@@ -265,7 +265,7 @@ export class RefinerClient {
                         if (e && e.type) {
                           // Ignore heartbeat messages to reduce noise
                           if (e.type !== "heartbeat") {
-                            onEvent(e)
+                          onEvent(e)
                           }
                           // Don't stop here - stream cleanup handles it
                         }
