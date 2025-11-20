@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { useAnalytics } from "@/contexts/AnalyticsContext"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface HourBucket {
   hour: number
@@ -83,8 +85,10 @@ interface AnalyticsResponse {
 }
 
 export default function AdminAnalytics() {
-  const { analytics: data, loading: isLoading, error } = useAnalytics()
+  const { user } = useAuth()
+  const { analytics: data, loading: isLoading, error, refreshAnalytics } = useAnalytics()
   const [selectedModel, setSelectedModel] = useState<'gpt-4' | 'gpt-4-turbo' | 'gpt-4o' | 'gpt-3.5-turbo'>('gpt-4')
+  const [viewMode, setViewMode] = useState<'user' | 'all'>('user') // 'user' for user-specific, 'all' for aggregate
 
   // Update selected model when data loads
   useMemo(() => {
@@ -186,8 +190,40 @@ export default function AdminAnalytics() {
   return (
     <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-card-foreground">Admin Analytics</CardTitle>
-        <CardDescription className="text-muted-foreground">Live OpenAI usage, costs & job stats</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-card-foreground">Admin Analytics</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              {viewMode === 'user' ? 'Your Usage Statistics' : 'All Users Statistics'}
+            </CardDescription>
+          </div>
+          {user && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === 'user' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setViewMode('user')
+                  refreshAnalytics(user?.id)
+                }}
+                className="text-xs"
+              >
+                My Stats
+              </Button>
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setViewMode('all')
+                  refreshAnalytics(null)
+                }}
+                className="text-xs"
+              >
+                All Users
+              </Button>
+            </div>
+          )}
+        </div>
         
         {/* Model Selection */}
         <div className="flex items-center gap-2 mt-2">

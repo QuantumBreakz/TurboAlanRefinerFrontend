@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react'
 import { refinerClient } from '@/lib/refiner-client'
+import { useAuth } from './AuthContext'
 
 interface AnalyticsData {
   jobs: {
@@ -67,17 +68,21 @@ interface AnalyticsContextType {
 const AnalyticsContext = createContext<AnalyticsContextType | undefined>(undefined)
 
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const refreshAnalytics = useCallback(async () => {
+  const refreshAnalytics = useCallback(async (userIdOverride?: string) => {
     try {
       setLoading(true)
       setError(null)
       
-      const data = await refinerClient.getAnalytics()
+      // Use provided userId or get from auth context
+      // If userIdOverride is explicitly undefined/null, fetch all users
+      const userId = userIdOverride !== undefined ? userIdOverride : (user?.id || undefined)
+      const data = await refinerClient.getAnalytics(userId)
       setAnalytics(data)
       setLastUpdated(new Date())
     } catch (err) {
@@ -85,7 +90,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user])
 
   // Initial load
   useEffect(() => {

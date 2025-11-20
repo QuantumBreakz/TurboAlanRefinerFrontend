@@ -7,7 +7,16 @@ export async function GET(request: NextRequest) {
   }
   
   try {
-    const url = `${backendUrl.replace(/\/$/, "")}/analytics/summary`
+    // Get user_id from query parameter if provided
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("user_id")
+    
+    // Build URL with user_id if provided
+    let url = `${backendUrl.replace(/\/$/, "")}/analytics/summary`
+    if (userId) {
+      url += `?user_id=${encodeURIComponent(userId)}`
+    }
+    
     const upstream = await fetch(url, {
       headers: { "X-API-Key": process.env.BACKEND_API_KEY || "" },
     })

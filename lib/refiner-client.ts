@@ -663,8 +663,12 @@ export class RefinerClient {
     return response.json()
   }
 
-  async getAnalytics() {
-    const response = await fetch(`${this.baseUrl}/analytics/summary`)
+  async getAnalytics(userId?: string) {
+    let url = `${this.baseUrl}/analytics/summary`
+    if (userId) {
+      url += `?user_id=${encodeURIComponent(userId)}`
+    }
+    const response = await fetch(url)
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
     return response.json()
   }
