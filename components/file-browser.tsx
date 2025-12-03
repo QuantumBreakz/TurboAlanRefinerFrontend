@@ -39,25 +39,18 @@ export default function FileBrowser({
     }
   }, [selectedInputPath, inputPath])
 
-  // Load available files from backend
+  // Load available files from backend (only current session files)
   const loadAvailableFiles = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/files')
-      if (response.ok) {
-        const data = await response.json()
-        const backendFiles = data.files?.map((f: any) => f.filename) || []
-        
-        // Also include uploaded files from FileContext
-        const contextFiles = uploadedFiles
-          .filter(file => file.uploaded && (file.status === "uploaded" || file.status === "completed"))
-          .map(file => file.source || file.name)
-          .filter((path): path is string => !!path)
-        
-        // Combine and deduplicate
-        const allFiles = Array.from(new Set([...backendFiles, ...contextFiles]))
-        setAvailableFiles(allFiles)
-      }
+      // Only show files from FileContext (current session uploads)
+      // Don't load backend files as they may be from previous sessions
+      const contextFiles = uploadedFiles
+        .filter(file => file.uploaded && (file.status === "uploaded" || file.status === "completed"))
+        .map(file => file.source || file.name)
+        .filter((path): path is string => !!path)
+      
+      setAvailableFiles(contextFiles)
     } catch (error) {
       console.error('Failed to load files:', error)
     } finally {
@@ -335,53 +328,7 @@ export default function FileBrowser({
             <p className="text-xs text-gray-500">Browse a new file to add it to the selection list above</p>
           </div>
 
-          {/* Available Files from Backend */}
-          {availableFiles.filter(filename => {
-            // Exclude files that are already shown in Uploaded Files section
-            return !uploadedFiles.some(
-              file => (file.source === filename || file.name === filename) && file.uploaded
-            )
-          }).length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Other Available Files</Label>
-              <div className="max-h-48 overflow-y-auto space-y-1">
-                {availableFiles
-                  .filter(filename => {
-                    // Exclude files that are already shown in Uploaded Files section
-                    return !uploadedFiles.some(
-                      file => (file.source === filename || file.name === filename) && file.uploaded
-                    )
-                  })
-                  .map((filename, index) => {
-                    const isSelected = inputPath === filename
-                    
-                    return (
-                      <div
-                        key={index}
-                        className={`flex items-center justify-between p-2 rounded border transition-colors ${
-                          isSelected ? 'bg-green-100 border-green-300' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="text-sm truncate" title={filename}>
-                            {formatFilePath(filename, filename)}
-                          </span>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={isSelected ? "default" : "outline"}
-                          onClick={() => handleInputPathChange(filename)}
-                          className="ml-2 flex-shrink-0"
-                        >
-                          {isSelected ? "Selected" : "Select"}
-                        </Button>
-                      </div>
-                    )
-                  })}
-              </div>
-            </div>
-          )}
+          {/* Removed "Other Available Files" section - only show current session files */}
 
           {inputPath && (
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">

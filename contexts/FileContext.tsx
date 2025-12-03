@@ -29,23 +29,19 @@ const FileContext = createContext<FileContextType | undefined>(undefined)
 export function FileProvider({ children }: { children: ReactNode }) {
   const [files, setFiles] = useState<FileItem[]>([])
 
-  // Load files from localStorage on mount
+  // Clear any old files from localStorage on mount (don't load them)
   useEffect(() => {
-    const savedFiles = localStorage.getItem('refiner-uploaded-files')
-    if (savedFiles) {
-      try {
-        const parsedFiles = JSON.parse(savedFiles)
-        setFiles(parsedFiles)
-      } catch (error) {
-        console.error('Failed to load uploaded files:', error)
-      }
-    }
+    // Remove old persisted files to ensure fresh state
+    localStorage.removeItem('refiner-uploaded-files')
   }, [])
 
-  // Save files to localStorage whenever files change
+  // Clear files when component unmounts (user navigates away)
   useEffect(() => {
-    localStorage.setItem('refiner-uploaded-files', JSON.stringify(files))
-  }, [files])
+    return () => {
+      // Clear files when leaving the page
+      setFiles([])
+    }
+  }, [])
 
   const addFile = (file: FileItem) => {
     setFiles(prev => [...prev, file])
