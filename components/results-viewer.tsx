@@ -142,16 +142,31 @@ export default function ResultsViewer() {
           // Continue with event files only
         }
         
+        // Filter out incomplete/empty files from API
+        const validApiFiles = apiFiles.filter(file => {
+          // Only include files that have a proper name (not "Unknown file") and have some data
+          return file.originalName && 
+                 file.originalName !== "Unknown file" && 
+                 (file.passes > 0 || file.status === "completed" || file.status === "error")
+        })
+        
+        // Filter out incomplete/empty files from events
+        const validEventFiles = eventFiles.filter(file => {
+          return file.originalName && 
+                 file.originalName !== "Unknown file" &&
+                 (file.passes > 0 || file.status === "completed" || file.status === "error" || file.outputFiles.length > 0)
+        })
+        
         // Merge files, intelligently combining API and event data
         const mergedFiles = new Map<string, ProcessedFile>()
         
-        // Add API files first
-        apiFiles.forEach(file => {
+        // Add valid API files first
+        validApiFiles.forEach(file => {
           mergedFiles.set(file.id, file)
         })
         
         // Merge (don't blindly override) with event files
-        eventFiles.forEach(eventFile => {
+        validEventFiles.forEach(eventFile => {
           const existing = mergedFiles.get(eventFile.id)
           if (existing) {
             // Merge: keep API data but update with event data where appropriate
@@ -174,12 +189,29 @@ export default function ResultsViewer() {
           }
         })
         
+        // Additional deduplication: remove files with same name but different IDs
+        // Keep the one with more complete data
+        const nameMap = new Map<string, ProcessedFile>()
+        Array.from(mergedFiles.values()).forEach(file => {
+          const existing = nameMap.get(file.originalName)
+          if (!existing) {
+            nameMap.set(file.originalName, file)
+          } else {
+            // Keep the one with more passes, output files, or completed status
+            const currentScore = (file.passes * 10) + file.outputFiles.length + (file.status === "completed" ? 100 : 0)
+            const existingScore = (existing.passes * 10) + existing.outputFiles.length + (existing.status === "completed" ? 100 : 0)
+            if (currentScore > existingScore) {
+              nameMap.set(file.originalName, file)
+            }
+          }
+        })
+        
         // Sanitize: de-duplicate outputFiles per file (proxy can double-deliver events)
-        const sanitized = Array.from(mergedFiles.values()).map(file => {
+        const sanitized = Array.from(nameMap.values()).map(file => {
           const seen = new Set<string>()
           const uniqueOutputs = [] as ProcessedFile["outputFiles"]
           for (const out of file.outputFiles) {
-            const k = `${out.passNumber}|${out.path}`
+            const k = `${out.passNumber}|${out.path || out.fileName}`
             if (seen.has(k)) continue
             seen.add(k)
             uniqueOutputs.push(out)
@@ -187,7 +219,15 @@ export default function ResultsViewer() {
           uniqueOutputs.sort((a, b) => a.passNumber - b.passNumber)
           return { ...file, outputFiles: uniqueOutputs }
         })
-        setProcessedFiles(sanitized)
+        
+        // Final filter: remove files that are truly empty/incomplete
+        const finalFiles = sanitized.filter(file => {
+          return file.originalName && 
+                 file.originalName !== "Unknown file" &&
+                 (file.passes > 0 || file.outputFiles.length > 0 || file.status === "completed" || file.status === "error")
+        })
+        
+        setProcessedFiles(finalFiles)
       } catch (err) {
         
         setError("Failed to load job results")
