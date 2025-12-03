@@ -57,11 +57,11 @@ export default function GoogleAuthSuccessPage() {
             
             // Wait a bit to ensure state updates complete
             // Since we've saved to localStorage, AuthContext will pick it up
-            await new Promise(resolve => setTimeout(resolve, 300))
+            await new Promise(resolve => setTimeout(resolve, 500))
             
             setIsProcessing(false)
-            // Redirect to dashboard
-            router.push('/dashboard')
+            // Force redirect to dashboard - use window.location for reliability
+            window.location.href = '/dashboard'
           } catch (parseError) {
             console.error('Error parsing user data:', parseError)
             setError('Failed to parse user data')

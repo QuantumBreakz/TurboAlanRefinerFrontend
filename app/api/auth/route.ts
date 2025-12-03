@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { connectToDatabase } from "@/lib/mongodb"
 
 // Import dependencies safely
 let bcrypt: any = null
@@ -12,13 +13,25 @@ try {
   console.error("Failed to load auth dependencies:", error)
 }
 
-// MongoDB helper functions
+// MongoDB helper functions - use direct MongoDB connection instead of HTTP calls
 async function getMongoUser(email: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_ORIGIN || 'http://localhost:3000'}/api/mongodb/users?email=${encodeURIComponent(email)}`)
-    if (!response.ok) return null
-    const data = await response.json()
-    return data.user || null
+    const { db } = await connectToDatabase()
+    if (!db) {
+      console.error("MongoDB connection failed")
+      return null
+    }
+    
+    const user = await db.collection('users').findOne({ email: email.toLowerCase() })
+    if (user) {
+      // Convert ObjectId to string
+      const userObj = user as any
+      if (userObj._id) {
+        userObj._id = userObj._id.toString()
+      }
+      return userObj
+    }
+    return null
   } catch (error) {
     console.error("Failed to get user from MongoDB:", error)
     return null
@@ -27,17 +40,46 @@ async function getMongoUser(email: string) {
 
 async function createMongoUser(userData: any) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_ORIGIN || 'http://localhost:3000'}/api/mongodb/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
-    })
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Failed to create user')
+    const { db } = await connectToDatabase()
+    if (!db) {
+      throw new Error("MongoDB connection failed")
     }
-    const data = await response.json()
-    return data.user || null
+    
+    // Check if user already exists
+    const existing = await db.collection('users').findOne({ email: userData.email.toLowerCase() })
+    if (existing) {
+      throw new Error("User already exists")
+    }
+    
+    // Create new user
+    const userId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    
+    const newUser = {
+      id: userId,
+      email: userData.email.toLowerCase(),
+      password_hash: userData.password_hash || '',
+      first_name: userData.first_name || '',
+      last_name: userData.last_name || '',
+      settings: userData.settings || {
+        openai_api_key: '',
+        openai_model: 'gpt-4',
+        target_scanner_risk: 15,
+        min_word_ratio: 0.8
+      },
+      role: userData.role || 'user',
+      is_active: userData.is_active !== undefined ? userData.is_active : true,
+      google_id: userData.google_id || null,
+      avatar_url: userData.avatar_url || null,
+      created_at: now,
+      last_login_at: null
+    }
+    
+    await db.collection('users').insertOne(newUser)
+    
+    // Remove password_hash from response
+    const { password_hash: _, ...userResponse } = newUser
+    return userResponse
   } catch (error) {
     console.error("Failed to create user in MongoDB:", error)
     throw error
@@ -46,14 +88,40 @@ async function createMongoUser(userData: any) {
 
 async function updateMongoUser(userId: string, updates: any) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_ORIGIN || 'http://localhost:3000'}/api/mongodb/users/${userId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    })
-    if (!response.ok) return null
-    const data = await response.json()
-    return data.user || null
+    const { db } = await connectToDatabase()
+    if (!db) {
+      console.error("MongoDB connection failed")
+      return null
+    }
+    
+    const updateData: any = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    }
+    
+    // Remove id from update data
+    delete updateData.id
+    delete updateData._id
+    delete updateData.userId
+    
+    const result = await db.collection('users').findOneAndUpdate(
+      { id: userId },
+      { $set: updateData },
+      { returnDocument: 'after' }
+    )
+    
+    if (!result) {
+      return null
+    }
+    
+    const user = result as any
+    if (user._id) {
+      user._id = user._id.toString()
+    }
+    
+    // Remove password_hash from response
+    const { password_hash: _, ...userResponse } = user
+    return userResponse
   } catch (error) {
     console.error("Failed to update user in MongoDB:", error)
     return null
@@ -62,10 +130,13 @@ async function updateMongoUser(userId: string, updates: any) {
 
 async function insertSystemLog(logData: any) {
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_APP_ORIGIN || 'http://localhost:3000'}/api/mongodb/logs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(logData)
+    const { db } = await connectToDatabase()
+    if (!db) return
+    
+    await db.collection('system_logs').insertOne({
+      ...logData,
+      timestamp: new Date().toISOString(),
+      level: logData.level || 'info'
     })
   } catch (error) {
     console.error("Failed to insert system log:", error)
@@ -354,12 +425,25 @@ async function handleSigninWithMongoDB(data: SigninRequest) {
   const user = await getMongoUser(email)
 
   if (!user || !user.is_active) {
+    console.log("User not found or inactive for email:", email)
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
   }
 
+  // Check if user has a password (might be Google-only account)
+  if (!user.password_hash) {
+    console.log("User has no password hash - likely Google-only account")
+    return NextResponse.json({ error: "Invalid email or password. Please sign in with Google." }, { status: 401 })
+  }
+
   // Verify password
+  if (!bcrypt) {
+    console.error("bcrypt not available")
+    return NextResponse.json({ error: "Authentication service unavailable" }, { status: 500 })
+  }
+
   const isValidPassword = await bcrypt.compare(password, user.password_hash)
   if (!isValidPassword) {
+    console.log("Password comparison failed for email:", email)
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
   }
 
@@ -478,7 +562,7 @@ async function handleGoogleSigninWithMongoDB(data: GoogleSigninRequest) {
   if (!user) {
     // Create new user
     try {
-      user = await createMongoUser({
+      const newUser = await createMongoUser({
         email: email.toLowerCase(),
         first_name: firstName || '',
         last_name: lastName || '',

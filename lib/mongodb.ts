@@ -3,6 +3,8 @@
  * Provides a client interface for MongoDB operations via API routes
  */
 
+import { MongoClient, Db } from 'mongodb'
+
 // Database table types (matching MongoDB schema)
 export interface User {
   id: string
@@ -170,6 +172,43 @@ export const mongodb = {
       console.error('Failed to insert system log:', error)
       return false
     }
+  }
+}
+
+// MongoDB connection helper for server-side API routes
+let cachedClient: MongoClient | null = null
+let cachedDb: Db | null = null
+
+export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db } | { client: null; db: null }> {
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb }
+  }
+
+  try {
+    const uri = process.env.MONGODB_URL || process.env.MONGO_URL || process.env.MONGO_URI
+    
+    if (!uri) {
+      console.warn("MongoDB URL not configured")
+      return { client: null, db: null }
+    }
+    
+    const client = new MongoClient(uri, {
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    })
+    
+    await client.connect()
+    const db = client.db(process.env.MONGODB_DB_NAME || 'alan_refiner')
+    
+    cachedClient = client
+    cachedDb = db
+    
+    return { client, db }
+  } catch (error) {
+    console.error("Failed to connect to MongoDB:", error)
+    return { client: null, db: null }
   }
 }
 
