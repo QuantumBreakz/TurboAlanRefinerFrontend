@@ -13,6 +13,7 @@ import { LoadingProvider } from "@/contexts/LoadingContext"
 import LoadingBar from "@/components/loading-bar"
 import GlobalLoadingBar from "@/components/global-loading-bar"
 import { PriceInitializer } from "@/components/price-initializer"
+import { StripeErrorHandler } from "@/components/stripe-error-handler"
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -50,6 +51,7 @@ export default function RootLayout({
               <ProcessingProvider>
                 <SchemaProvider>
                   <AnalyticsProvider>
+                    <StripeErrorHandler />
                     <PriceInitializer />
                     <LoadingBar />
                     <GlobalLoadingBar />
