@@ -1,5 +1,5 @@
 /**
- * Stripe Checkout Session API Route
+ * Stripe Customer Portal API Route
  * Proxies requests to backend Stripe service.
  */
 import { NextRequest, NextResponse } from "next/server"
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const backendUrl = process.env.NEXT_PUBLIC_REFINER_BACKEND_URL || process.env.REFINER_BACKEND_URL || 'http://localhost:8000'
     
     // Proxy request to backend
-    const response = await fetch(`${backendUrl}/stripe/create-checkout-session`, {
+    const response = await fetch(`${backendUrl}/stripe/create-portal-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.detail || 'Failed to create checkout session' },
+        { error: data.detail || 'Failed to create portal session' },
         { status: response.status }
       )
     }
@@ -30,8 +30,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data)
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message || "Stripe failed" },
+      { error: e?.message || "Failed to create portal session" },
       { status: 500 }
     )
   }
 }
+

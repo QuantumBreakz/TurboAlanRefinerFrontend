@@ -12,6 +12,7 @@ import { AuthProvider } from "@/contexts/AuthContext"
 import { LoadingProvider } from "@/contexts/LoadingContext"
 import LoadingBar from "@/components/loading-bar"
 import GlobalLoadingBar from "@/components/global-loading-bar"
+import { PriceInitializer } from "@/components/price-initializer"
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -49,6 +50,7 @@ export default function RootLayout({
               <ProcessingProvider>
                 <SchemaProvider>
                   <AnalyticsProvider>
+                    <PriceInitializer />
                     <LoadingBar />
                     <GlobalLoadingBar />
                     {children}

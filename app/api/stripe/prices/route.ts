@@ -1,28 +1,26 @@
 /**
- * Stripe Checkout Session API Route
- * Proxies requests to backend Stripe service.
+ * Stripe Prices API Route
+ * Proxies requests to backend Stripe price management service.
  */
 import { NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json()
     const backendUrl = process.env.NEXT_PUBLIC_REFINER_BACKEND_URL || process.env.REFINER_BACKEND_URL || 'http://localhost:8000'
     
     // Proxy request to backend
-    const response = await fetch(`${backendUrl}/stripe/create-checkout-session`, {
-      method: 'POST',
+    const response = await fetch(`${backendUrl}/stripe/prices/all`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
     })
 
     const data = await response.json()
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.detail || 'Failed to create checkout session' },
+        { error: data.detail || 'Failed to get price IDs' },
         { status: response.status }
       )
     }
@@ -30,8 +28,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data)
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message || "Stripe failed" },
+      { error: e?.message || "Failed to get price IDs" },
       { status: 500 }
     )
   }
 }
+
