@@ -27,8 +27,11 @@ export default function TurboAlanRefiner() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const router = useRouter()
 
-  const handleAuthenticated = () => {
+  const handleAuthenticated = async () => {
     setShowAuthModal(false)
+    // Wait a moment for authentication state to propagate
+    // This ensures RequireAuth component sees the user as authenticated
+    await new Promise(resolve => setTimeout(resolve, 300))
     router.push('/dashboard')
   }
 

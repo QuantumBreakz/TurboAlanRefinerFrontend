@@ -155,6 +155,8 @@ export default function SignupModal({ isOpen, onClose, onSignupSuccess, onSwitch
         title: "Account created!",
         description: `Welcome, ${formData.firstName}! Your account has been created successfully.`,
       })
+      // Wait a moment for state to propagate before redirecting
+      await new Promise(resolve => setTimeout(resolve, 200))
       onSignupSuccess()
     } catch (err) {
       stopLoading()

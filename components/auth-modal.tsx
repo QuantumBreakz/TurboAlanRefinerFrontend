@@ -125,6 +125,8 @@ export default function AuthModal({ isOpen, onClose, onAuthenticated }: AuthModa
         title: "Welcome back!",
         description: `Signed in as ${signinData.email}`,
       })
+      // Wait a moment for state to propagate before redirecting
+      await new Promise(resolve => setTimeout(resolve, 200))
       onAuthenticated()
     } catch (err) {
       stopLoading()

@@ -56,9 +56,10 @@ export default function GoogleAuthSuccessPage() {
             // Clear hash from URL
             window.history.replaceState({}, '', '/auth/google/success')
             
-            // Wait a bit to ensure state updates complete
+            // Wait a bit longer to ensure state updates complete and propagate
             // Since we've saved to localStorage, AuthContext will pick it up
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Give enough time for RequireAuth to see the authenticated state
+            await new Promise(resolve => setTimeout(resolve, 800))
             
             setIsProcessing(false)
             // Force redirect to dashboard - use window.location for reliability

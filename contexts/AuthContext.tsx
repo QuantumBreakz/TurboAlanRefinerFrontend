@@ -104,12 +104,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token])
 
   const signin = useCallback((u: AuthUser, t: string) => {
-    setUser(u)
-    setToken(t)
+    // Save to localStorage immediately (synchronously) before state update
+    // This ensures data is available if page reloads
+    try {
+      localStorage.setItem('turbo-alan-user', JSON.stringify(u))
+      localStorage.setItem('refiner-auth-state', JSON.stringify({ isAuthenticated: true, token: t }))
+    } catch {}
+    
     try {
       const expires = new Date(Date.now() + 7*24*60*60*1000).toUTCString()
       document.cookie = `refiner_auth=${t}; Path=/; Expires=${expires}; SameSite=Lax`
     } catch {}
+    
+    // Update state after localStorage is saved
+    setUser(u)
+    setToken(t)
   }, [])
 
   const signout = useCallback(async () => {
