@@ -91,18 +91,49 @@ export default function ProcessingControls() {
       }
     }
     
-    // Load selected file path
+    // Load selected file path with validation (deferred to allow FileContext to initialize)
     if (savedFileSelection) {
-      try {
-        const parsedFileSelection = JSON.parse(savedFileSelection)
-        if (parsedFileSelection.path) {
-          setSelectedInputPath(parsedFileSelection.path)
+      // Use setTimeout to defer validation until FileContext is ready
+      setTimeout(() => {
+        try {
+          const parsedFileSelection = JSON.parse(savedFileSelection)
+          if (parsedFileSelection.path) {
+            const savedPath = parsedFileSelection.path
+            
+            // CRITICAL FIX: Validate that the file still exists in the current session
+            // On Vercel, /tmp files are ephemeral and get cleared between invocations
+            const uploadedFiles = getUploadedFiles()
+            const fileExists = uploadedFiles.some(file => 
+              file.source === savedPath || 
+              file.name === savedPath ||
+              (file as any).driveId === savedPath
+            )
+            
+            // Also check if it's a Google Drive URL (those persist)
+            const isDriveUrl = savedPath.includes('drive.google.com') || savedPath.includes('docs.google.com')
+            
+            // If file doesn't exist and it's not a Drive URL, clear the stale reference
+            if (!fileExists && !isDriveUrl) {
+              console.warn('Stale file reference detected, clearing:', savedPath)
+              localStorage.removeItem('refiner-selected-file')
+              toast({
+                title: "File Session Expired",
+                description: "The previously selected file is no longer available. Please select a new file.",
+                variant: "destructive"
+              })
+            } else {
+              // File exists or is a Drive URL, restore the selection
+              setSelectedInputPath(savedPath)
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load file selection:', error)
+          // Clear corrupted localStorage entry
+          localStorage.removeItem('refiner-selected-file')
         }
-      } catch (error) {
-        console.error('Failed to load file selection:', error)
-      }
+      }, 100) // Small delay to ensure FileContext is initialized
     }
-  }, [])
+  }, [getUploadedFiles, toast])
 
 
   // Save settings to localStorage whenever settings change
@@ -205,6 +236,34 @@ export default function ProcessingControls() {
       localStorage.setItem('refiner-selected-file', JSON.stringify({ path: selectedInputPath }))
     }
   }, [selectedInputPath])
+
+  // CRITICAL FIX: Re-validate selected file when uploaded files change
+  // This ensures stale file references are cleared when files are removed
+  useEffect(() => {
+    if (!selectedInputPath) return
+    
+    const uploadedFiles = getUploadedFiles()
+    const fileExists = uploadedFiles.some(file => 
+      file.source === selectedInputPath || 
+      file.name === selectedInputPath ||
+      (file as any).driveId === selectedInputPath
+    )
+    
+    // Check if it's a Google Drive URL (those persist)
+    const isDriveUrl = selectedInputPath.includes('drive.google.com') || selectedInputPath.includes('docs.google.com')
+    
+    // If file doesn't exist and it's not a Drive URL, clear the stale reference
+    if (!fileExists && !isDriveUrl) {
+      console.warn('Selected file no longer exists in current session, clearing:', selectedInputPath)
+      setSelectedInputPath("")
+      localStorage.removeItem('refiner-selected-file')
+      toast({
+        title: "File Session Expired",
+        description: "The selected file is no longer available. Please select a new file.",
+        variant: "destructive"
+      })
+    }
+  }, [getUploadedFiles, selectedInputPath, toast])
 
   // Debug isProcessing state changes (disabled)
   useEffect(() => {
@@ -596,8 +655,38 @@ export default function ProcessingControls() {
   const handleStartProcessing = async () => {
     // Check if we have a selected input path or uploaded files
     if (!selectedInputPath && getUploadedFiles().length === 0) {
-      alert("Please select an input file or upload files before starting processing.")
+      toast({
+        title: "No File Selected",
+        description: "Please select an input file or upload files before starting processing.",
+        variant: "destructive"
+      })
       return
+    }
+
+    // CRITICAL FIX: Validate that selected files still exist in the current session
+    if (selectedInputPath) {
+      const uploadedFiles = getUploadedFiles()
+      const fileExists = uploadedFiles.some(file => 
+        file.source === selectedInputPath || 
+        file.name === selectedInputPath ||
+        (file as any).driveId === selectedInputPath
+      )
+      
+      // Check if it's a Google Drive URL (those persist)
+      const isDriveUrl = selectedInputPath.includes('drive.google.com') || selectedInputPath.includes('docs.google.com')
+      
+      // If file doesn't exist and it's not a Drive URL, clear the stale reference
+      if (!fileExists && !isDriveUrl) {
+        console.warn('Selected file no longer exists, clearing stale reference:', selectedInputPath)
+        setSelectedInputPath("")
+        localStorage.removeItem('refiner-selected-file')
+        toast({
+          title: "File Not Found",
+          description: "The selected file is no longer available. Please select a new file.",
+          variant: "destructive"
+        })
+        return
+      }
     }
 
     // Check for large file/high cost
