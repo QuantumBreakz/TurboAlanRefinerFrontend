@@ -8,7 +8,7 @@ import { Download, FileText } from "lucide-react"
 interface DownloadOption {
   fileId: string
   fileName: string
-  passes: { passNumber: number; path: string; size?: number }[]
+  passes: { passNumber: number; path: string; size?: number; textContent?: string }[]
 }
 
 interface DownloadModalProps {
@@ -30,17 +30,58 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
     const option = downloadOptions.find(opt => opt.fileId === selectedFile)
     const passData = option?.passes.find(p => p.passNumber === selectedPass)
 
-    if (!passData || !passData.path) {
+    if (!passData) {
       alert("Could not find the selected file/pass")
       return
     }
 
     try {
-      // Download the file from the backend
+      // CRITICAL FIX: Use textContent first (reliable on Vercel), then fall back to path-based download
+      if (passData.textContent) {
+        // Client-side download using textContent (works on Vercel)
+        const blob = new Blob([passData.textContent], { type: 'text/plain;charset=utf-8' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${option?.fileName}_pass${selectedPass}.txt`
+        a.style.display = 'none'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+        }, 100)
+        onClose()
+        return
+      }
+
+      // Fallback to path-based download if textContent not available
+      if (!passData.path) {
+        throw new Error("No file content or path available for download")
+      }
+
       const response = await fetch(`/api/files/download?path=${encodeURIComponent(passData.path)}`)
       
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.statusText}`)
+        const errorText = await response.text()
+        // If file not found and we have textContent, use it (shouldn't happen but safety check)
+        if (response.status === 404 && passData.textContent) {
+          const blob = new Blob([passData.textContent], { type: 'text/plain;charset=utf-8' })
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${option?.fileName}_pass${selectedPass}.txt`
+          a.style.display = 'none'
+          document.body.appendChild(a)
+          a.click()
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+          }, 100)
+          onClose()
+          return
+        }
+        throw new Error(`Download failed: ${errorText || response.statusText}`)
       }
 
       // Get the blob
