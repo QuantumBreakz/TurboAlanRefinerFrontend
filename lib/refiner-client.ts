@@ -231,29 +231,36 @@ export class RefinerClient {
                 
                 // Try to open WS to backend directly (bypass Next.js)
                 try {
-                  const backend = process.env.NEXT_PUBLIC_REFINER_BACKEND_WS_URL || (this.baseUrl ? this.baseUrl : "")
+                  // CRITICAL FIX: Use actual backend URL for WebSocket, not Next.js proxy
+                  // If NEXT_PUBLIC_REFINER_BACKEND_WS_URL is set, use it
+                  // Otherwise, derive from NEXT_PUBLIC_REFINER_BACKEND_URL
+                  // Never use this.baseUrl (/api) for WebSocket as it's the Next.js proxy
+                  let backend = process.env.NEXT_PUBLIC_REFINER_BACKEND_WS_URL
+                  if (!backend) {
+                    // Fallback to deriving from backend URL
+                    backend = process.env.NEXT_PUBLIC_REFINER_BACKEND_URL || ""
+                  }
+                  
                   if (backend) {
                     // Detect if page is HTTPS or if we're in production (Vercel)
                     const isSecure = typeof window !== "undefined" && window.location.protocol === "https:"
                     const isProduction = process.env.NODE_ENV === "production" || 
                                          (typeof window !== "undefined" && window.location.hostname.includes("vercel.app"))
                     
-                    // Convert http:// to ws:// and https:// to wss://
-                    // CRITICAL FIX: In production or HTTPS, always use wss:// for CSP compliance
+                    // CRITICAL FIX: In production or HTTPS, ALWAYS use wss:// for CSP compliance
                     let wsBase = backend.replace(/\/$/, "")
+                    
+                    // Remove any existing protocol
+                    wsBase = wsBase.replace(/^(https?|wss?):\/\//, "")
+                    
+                    // In production or HTTPS, always use wss://
                     if (isSecure || isProduction) {
-                      // Force secure WebSocket for HTTPS pages and production
-                      wsBase = wsBase.replace(/^https?:\/\//, "wss://")
-                      // If no protocol was present, add wss://
-                      if (!wsBase.startsWith("wss://") && !wsBase.startsWith("ws://")) {
-                        wsBase = `wss://${wsBase}`
-                      }
+                      wsBase = `wss://${wsBase}`
                     } else {
-                      // Use protocol from backend URL for HTTP pages (development only)
-                      wsBase = wsBase
-                        .replace(/^https:\/\//, "wss://")
-                        .replace(/^http:\/\//, "ws://")
+                      // Development: use ws:// for HTTP
+                      wsBase = `ws://${wsBase}`
                     }
+                    
                     const wsUrl = `${wsBase}/ws/progress/${jobId}`
                     
                     // Small delay to ensure backend is ready
