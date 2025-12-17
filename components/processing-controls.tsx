@@ -548,6 +548,10 @@ export default function ProcessingControls() {
               const current = newMap.get(ev.pass) || { pass: ev.pass, status: "running" as const, currentStage: ev.stage } as any
               current.currentStage = ev.stage
               current.status = "running"
+              // CRITICAL FIX: Capture inputChars from read stage_update event
+              if (ev.inputChars !== undefined) {
+                current.inputChars = ev.inputChars
+              }
               newMap.set(ev.pass, current)
               window.dispatchEvent(new CustomEvent("refiner-pass-progress", { 
                 detail: { passProgress: Array.from(newMap.values()), totalPasses: settings.passes }
