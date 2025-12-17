@@ -8,11 +8,14 @@ export interface FileItem {
   type: "local" | "drive"
   source?: string
   driveId?: string
+  backendFileId?: string  // Backend's file_id from upload response (same as driveId for local files)
+  fileType?: string       // File type from backend (docx, doc, pdf, txt, md)
   size?: number
   uploadedAt?: Date
   uploaded?: boolean
   uploadError?: string
   status?: "uploading" | "uploaded" | "processing" | "completed" | "error"
+  displayName?: string    // User-friendly display name
 }
 
 interface FileContextType {
