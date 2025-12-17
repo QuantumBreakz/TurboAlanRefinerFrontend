@@ -8,6 +8,7 @@ import { Download, FileText } from "lucide-react"
 interface DownloadOption {
   fileId: string
   fileName: string
+  fileExtension?: string  // Original file extension (docx, doc, txt, etc.)
   passes: { passNumber: number; path: string; size?: number; textContent?: string }[]
 }
 
@@ -36,14 +37,42 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
     }
 
     try {
+      // CRITICAL FIX: Determine the correct file extension
+      // Priority: 1) From path, 2) From option.fileExtension, 3) Default to .txt
+      const getFileExtension = () => {
+        if (passData.path) {
+          const pathExt = passData.path.split('.').pop()?.toLowerCase()
+          if (pathExt && ['docx', 'doc', 'pdf', 'txt', 'md'].includes(pathExt)) {
+            return `.${pathExt}`
+          }
+        }
+        if (option?.fileExtension) {
+          return option.fileExtension.startsWith('.') ? option.fileExtension : `.${option.fileExtension}`
+        }
+        // Extract from original filename if possible
+        const origExt = option?.fileName?.split('.').pop()?.toLowerCase()
+        if (origExt && ['docx', 'doc', 'pdf', 'txt', 'md'].includes(origExt)) {
+          return `.${origExt}`
+        }
+        return '.txt'  // Default fallback
+      }
+      
+      const fileExtension = getFileExtension()
+      const baseFileName = option?.fileName?.replace(/\.[^/.]+$/, '') || 'download'  // Remove existing extension
+      const downloadFileName = `${baseFileName}_pass${selectedPass}${fileExtension}`
+      
       // CRITICAL FIX: Use textContent first (reliable on Vercel), then fall back to path-based download
       if (passData.textContent) {
         // Client-side download using textContent (works on Vercel)
+        // IMPORTANT: textContent is always plain text - use .txt extension to avoid confusing users
+        // who might expect a .docx to open in Word. The path-based download below will use the
+        // actual file format if available.
+        const textDownloadFileName = `${baseFileName}_pass${selectedPass}.txt`
         const blob = new Blob([passData.textContent], { type: 'text/plain;charset=utf-8' })
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `${option?.fileName}_pass${selectedPass}.txt`
+        a.download = textDownloadFileName
         a.style.display = 'none'
         document.body.appendChild(a)
         a.click()
@@ -66,11 +95,13 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
         const errorText = await response.text()
         // If file not found and we have textContent, use it (shouldn't happen but safety check)
         if (response.status === 404 && passData.textContent) {
+          // Use .txt extension for textContent (plain text) to avoid confusing users
+          const textFallbackFileName = `${baseFileName}_pass${selectedPass}.txt`
           const blob = new Blob([passData.textContent], { type: 'text/plain;charset=utf-8' })
           const url = window.URL.createObjectURL(blob)
           const a = document.createElement('a')
           a.href = url
-          a.download = `${option?.fileName}_pass${selectedPass}.txt`
+          a.download = textFallbackFileName
           a.style.display = 'none'
           document.body.appendChild(a)
           a.click()
@@ -91,7 +122,7 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${option?.fileName}_pass${selectedPass}.txt`
+      a.download = downloadFileName
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
