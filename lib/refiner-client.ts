@@ -5,6 +5,7 @@ export interface RefineRequest {
     type: "local" | "drive"
     source?: string
     driveId?: string
+    backendFileId?: string  // Backend's file_id from upload response
     textContent?: string // Added for resume capability
   }>
   output: {
