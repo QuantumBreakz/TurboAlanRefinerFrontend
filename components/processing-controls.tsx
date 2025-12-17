@@ -35,7 +35,7 @@ export default function ProcessingControls() {
   const [selectedInputPath, setSelectedInputPath] = useState("")
   const [passProgress, setPassProgress] = useState<Map<number, {pass: number; status: "pending" | "running" | "completed"; inputChars?: number; outputChars?: number; currentStage?: string}>>(new Map())
   const [downloadModalOpen, setDownloadModalOpen] = useState(false)
-  const [completedFiles, setCompletedFiles] = useState<Array<{fileId: string; fileName: string; passes: {passNumber: number; path: string; size?: number; cost?: any}[]}>>([])
+  const [completedFiles, setCompletedFiles] = useState<Array<{fileId: string; fileName: string; fileExtension?: string; passes: {passNumber: number; path: string; size?: number; cost?: any; textContent?: string}[]}>>([])
   const [totalJobCost, setTotalJobCost] = useState(0)
   const [currentPassCost, setCurrentPassCost] = useState(0)
   const [tokenEstimate, setTokenEstimate] = useState<{tokens: number, cost: number} | null>(null)
@@ -245,7 +245,7 @@ export default function ProcessingControls() {
       // Filter events to only current job
       const currentJobEvents = processingEvents.filter(ev => ev.jobId === currentJobId)
       
-      const byFile: Record<string, { fileId: string; fileName: string; passes: { passNumber: number; path: string; size?: number; cost?: any; textContent?: string }[] }> = {}
+      const byFile: Record<string, { fileId: string; fileName: string; fileExtension?: string; passes: { passNumber: number; path: string; size?: number; cost?: any; textContent?: string }[] }> = {}
       for (const ev of currentJobEvents) {
         const anyEv: any = ev as any
         if (anyEv.type === 'pass_complete' && (anyEv.outputPath || anyEv.metrics?.localPath || anyEv.textContent) && anyEv.pass) {
@@ -253,7 +253,33 @@ export default function ProcessingControls() {
           const fname = anyEv.fileName || `File ${fid}`
           const path = anyEv.outputPath || anyEv.metrics?.localPath
           const textContent = anyEv.textContent // CRITICAL: Store textContent for reliable downloads on Vercel
-          byFile[fid] = byFile[fid] || { fileId: fid, fileName: fname, passes: [] }
+          
+          // CRITICAL FIX: Extract file extension for proper download format
+          const getFileExtension = () => {
+            if (path) {
+              const pathExt = path.split('.').pop()?.toLowerCase()
+              if (pathExt && ['docx', 'doc', 'pdf', 'txt', 'md'].includes(pathExt)) {
+                return `.${pathExt}`
+              }
+            }
+            const fnameExt = fname?.split('.').pop()?.toLowerCase()
+            if (fnameExt && ['docx', 'doc', 'pdf', 'txt', 'md'].includes(fnameExt)) {
+              return `.${fnameExt}`
+            }
+            return undefined // Will default to .txt in download modal
+          }
+          
+          const currentExt = getFileExtension()
+          
+          // Initialize file entry if not exists
+          if (!byFile[fid]) {
+            byFile[fid] = { fileId: fid, fileName: fname, fileExtension: currentExt, passes: [] }
+          } else {
+            // CRITICAL FIX: Update fileExtension if we now have a valid one and didn't before
+            if (currentExt && !byFile[fid].fileExtension) {
+              byFile[fid].fileExtension = currentExt
+            }
+          }
           if (!byFile[fid].passes.find(p => p.passNumber === anyEv.pass)) {
             byFile[fid].passes.push({ 
               passNumber: anyEv.pass, 
@@ -548,18 +574,24 @@ export default function ProcessingControls() {
             if (ev.fileId && ev.pass && (ev.outputPath || ev.metrics?.localPath)) {
               const filePath = ev.outputPath || ev.metrics?.localPath
               setCompletedFiles(prev => {
-                const existing = prev.find(f => f.fileId === ev.fileId)
-                if (existing) {
+                const existingIndex = prev.findIndex(f => f.fileId === ev.fileId)
+                if (existingIndex >= 0) {
+                  const existing = prev[existingIndex]
                   if (!existing.passes.find(p => p.passNumber === ev.pass)) {
-                    existing.passes.push({
-                      passNumber: ev.pass,
-                      path: filePath,
-                      size: ev.outputChars,
-                      cost: ev.cost
-                    })
-                    existing.passes.sort((a, b) => a.passNumber - b.passNumber)
+                    // CRITICAL FIX: Create new object to ensure React detects the change
+                    const updated = {
+                      ...existing,
+                      passes: [...existing.passes, {
+                        passNumber: ev.pass,
+                        path: filePath,
+                        size: ev.outputChars,
+                        cost: ev.cost,
+                        textContent: ev.textContent // Include textContent for download
+                      }].sort((a, b) => a.passNumber - b.passNumber)
+                    }
+                    return [...prev.slice(0, existingIndex), updated, ...prev.slice(existingIndex + 1)]
                   }
-                  return [...prev]
+                  return prev // No change needed
                 } else {
                   return [...prev, {
                     fileId: ev.fileId,
@@ -568,7 +600,8 @@ export default function ProcessingControls() {
                       passNumber: ev.pass,
                       path: filePath,
                       size: ev.outputChars,
-                      cost: ev.cost
+                      cost: ev.cost,
+                      textContent: ev.textContent // Include textContent for download
                     }]
                   }]
                 }
@@ -649,11 +682,12 @@ export default function ProcessingControls() {
     setCurrentPassCost(0)
     
     // Set a timeout fallback to prevent infinite processing state
+    // CRITICAL FIX: Increased from 10 to 60 minutes to match backend's 20 min per pass × 3 passes max
     processingTimeoutRef.current = setTimeout(() => {
       setIsProcessing(false)
       setPassProgress(new Map())
       window.dispatchEvent(new CustomEvent("refiner-processing-complete", { detail: { type: "timeout" } }))
-    }, 10 * 60 * 1000) // 10 minutes timeout
+    }, 60 * 60 * 1000) // 60 minutes timeout (allows for multiple passes on large files)
     
     // Also set a shorter timeout to check for stuck processing
     stuckCheckTimeoutRef.current = setTimeout(() => {
@@ -728,23 +762,33 @@ export default function ProcessingControls() {
           f.name === selectedInputPath
         )
         
+        // CRITICAL FIX: Use backend's file_id (stored in driveId/backendFileId) for local uploads
+        // For Google Drive files, the driveId from URL is the correct ID
+        const effectiveId = isDriveUrl 
+          ? (driveId || "selected_file")
+          : ((uploadedFile as any)?.driveId || (uploadedFile as any)?.backendFileId || uploadedFile?.id || driveId || "selected_file")
+        
         files = [{
-          id: uploadedFile?.id || (driveId || "selected_file"),
+          id: effectiveId,
           name: uploadedFile?.name || "Selected File",
           type: (isDriveUrl || driveId || uploadedFile?.type === 'drive') ? 'drive' as const : 'local' as const,
           source: selectedInputPath,
-          driveId: driveId || (uploadedFile as any)?.driveId || undefined
+          driveId: driveId || (uploadedFile as any)?.driveId || undefined,
+          backendFileId: (uploadedFile as any)?.driveId || (uploadedFile as any)?.backendFileId
         }]
       } else {
-        // CRITICAL FIX: Use the original file.id for consistency with backend upload registry
-        // The backend stores files by the file_id used during upload, so we must use the same ID
+        // CRITICAL FIX: Use the backend's file_id (stored in driveId) for local file uploads
+        // The backend generates its own file_id (like "file_12345_6789") during upload
+        // and stores file info under that key, NOT the frontend's random id
         files = getUploadedFiles().map(file => ({
-          id: file.id,  // Always use the original file.id from upload
+          // Use backend's file_id if available (stored in driveId after upload), fallback to frontend id
+          id: (file as any).driveId || (file as any).backendFileId || file.id,
           name: file.name,
           // Narrow to allowed union for API contract
           type: (file.type === 'drive' ? 'drive' : 'local') as 'local' | 'drive',
           source: file.source,
-          driveId: (file as any).driveId  // Include driveId for reference, but use file.id as primary identifier
+          driveId: (file as any).driveId,  // Include for reference
+          backendFileId: (file as any).driveId || (file as any).backendFileId  // Explicit backend file_id
         }))
       }
       
@@ -1018,19 +1062,25 @@ export default function ProcessingControls() {
             if (ev.fileId && ev.pass && (ev.outputPath || ev.metrics?.localPath)) {
               const filePath = ev.outputPath || ev.metrics?.localPath
               setCompletedFiles(prev => {
-                const existing = prev.find(f => f.fileId === ev.fileId)
-                if (existing) {
+                const existingIndex = prev.findIndex(f => f.fileId === ev.fileId)
+                if (existingIndex >= 0) {
+                  const existing = prev[existingIndex]
                   // Add this pass if it doesn't exist
                   if (!existing.passes.find(p => p.passNumber === ev.pass)) {
-                    existing.passes.push({
-                      passNumber: ev.pass,
-                      path: filePath,
-                      size: ev.outputChars,
-                      cost: ev.cost
-                    })
-                    existing.passes.sort((a, b) => a.passNumber - b.passNumber)
+                    // CRITICAL FIX: Create new object to ensure React detects the change
+                    const updated = {
+                      ...existing,
+                      passes: [...existing.passes, {
+                        passNumber: ev.pass,
+                        path: filePath,
+                        size: ev.outputChars,
+                        cost: ev.cost,
+                        textContent: ev.textContent // Include textContent for download
+                      }].sort((a, b) => a.passNumber - b.passNumber)
+                    }
+                    return [...prev.slice(0, existingIndex), updated, ...prev.slice(existingIndex + 1)]
                   }
-                  return [...prev]
+                  return prev // No change needed
                 } else {
                   // Create new file entry
                   return [...prev, {
@@ -1040,7 +1090,8 @@ export default function ProcessingControls() {
                       passNumber: ev.pass,
                       path: filePath,
                       size: ev.outputChars,
-                      cost: ev.cost
+                      cost: ev.cost,
+                      textContent: ev.textContent // Include textContent for download
                     }]
                   }]
                 }
