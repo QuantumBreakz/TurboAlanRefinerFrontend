@@ -64,7 +64,29 @@ export default function ProcessingControls() {
     refinerStrength: 2,
     dryRun: false,
     annotation: { enabled: false, mode: "inline" as "inline" | "sidecar", verbosity: "low" as "low" | "medium" | "high" },
+    preset: null as string | null, // Preset profile (fast_cheap, balanced, max_quality, academic, creative)
   })
+  
+  // Preset profiles for quick selection
+  const PRESETS = {
+    fast_cheap: { name: "Fast & Cheap", description: "Quick refinement, lowest cost", passes: 1, icon: "⚡" },
+    balanced: { name: "Balanced", description: "Good quality/cost balance", passes: 2, icon: "⚖️" },
+    max_quality: { name: "Max Quality", description: "Best results, higher cost", passes: 3, icon: "✨" },
+    academic: { name: "Academic", description: "For research/papers", passes: 2, icon: "📚" },
+    creative: { name: "Creative", description: "Maintains voice", passes: 2, icon: "🎨" },
+  }
+  
+  // Apply preset settings
+  const applyPresetSettings = (presetKey: string) => {
+    const preset = PRESETS[presetKey as keyof typeof PRESETS]
+    if (!preset) return
+    
+    setSettings(prev => ({
+      ...prev,
+      preset: presetKey,
+      passes: preset.passes,
+    }))
+  }
 
   // Load settings and file selection from localStorage on mount
   useEffect(() => {
@@ -848,6 +870,8 @@ export default function ProcessingControls() {
             verbosity: (schemaLevels.find(s => s.id === 'annotation_mode')?.value || 0) === 1 ? 'low' : 
                       (schemaLevels.find(s => s.id === 'annotation_mode')?.value || 0) === 2 ? 'medium' : 'high'
           },
+          // Preset profile for quick configuration
+          preset: settings.preset || undefined,
           // Map schema levels to heuristics for backend processing
           heuristics: {
             // Core processing flags
@@ -1288,6 +1312,32 @@ export default function ProcessingControls() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+        {/* Preset Profiles - Quick selection for common use cases */}
+        <div className="space-y-2">
+          <Label className="text-card-foreground flex items-center gap-2">
+            Quick Presets
+            <span className="text-xs text-muted-foreground font-normal">(click to apply)</span>
+          </Label>
+          <div className="grid grid-cols-5 gap-2">
+            {Object.entries(PRESETS).map(([key, preset]) => (
+              <button
+                key={key}
+                onClick={() => applyPresetSettings(key)}
+                className={`
+                  p-2 rounded-lg border text-center transition-all duration-200 text-sm
+                  ${settings.preset === key 
+                    ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/50' 
+                    : 'border-border bg-card hover:border-primary/50 hover:bg-primary/5 text-card-foreground'
+                  }
+                `}
+              >
+                <div className="text-lg mb-0.5">{preset.icon}</div>
+                <div className="font-medium text-xs truncate">{preset.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+        
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-card-foreground">Passes</Label>
