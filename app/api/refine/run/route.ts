@@ -38,6 +38,8 @@ interface RefineRequest {
     enabled?: boolean
     mode: "smart" | "strict"
   }
+  // Preset profile for quick configuration
+  preset?: string
 }
 
 interface PassState {
