@@ -24,13 +24,41 @@ export async function POST(request: NextRequest) {
       if (fileId) backendFormData.append("file_id", fileId)
       
       const url = `${backendUrl.replace(/\/$/, "")}/files/upload`
-      const upstream = await fetch(url, {
-        method: "POST",
-        headers: { "X-API-Key": process.env.BACKEND_API_KEY || "" },
-        body: backendFormData,
-      })
       
-      const data = await upstream.json()
+      let upstream: Response
+      try {
+        upstream = await fetch(url, {
+          method: "POST",
+          headers: { "X-API-Key": process.env.BACKEND_API_KEY || "" },
+          body: backendFormData,
+        })
+      } catch (fetchError) {
+        console.error("[API] /api/drive/upload: Fetch to backend failed:", fetchError)
+        return NextResponse.json({ 
+          error: "Failed to connect to backend", 
+          details: fetchError instanceof Error ? fetchError.message : String(fetchError)
+        }, { status: 502 })
+      }
+      
+      // Try to parse response as JSON
+      let data: any
+      const responseText = await upstream.text()
+      try {
+        data = JSON.parse(responseText)
+      } catch (jsonError) {
+        console.error("[API] /api/drive/upload: Failed to parse backend response:", responseText)
+        return NextResponse.json({ 
+          error: "Invalid response from backend", 
+          details: responseText.slice(0, 200)
+        }, { status: 502 })
+      }
+      
+      if (!upstream.ok) {
+        console.error(`[API] /api/drive/upload: Backend returned error ${upstream.status}:`, data)
+      } else {
+        console.log(`[API] /api/drive/upload: Upload successful, file_id: ${data.file_id}`)
+      }
+      
       return NextResponse.json(data, { status: upstream.status })
     } else {
       // Handle JSON requests (drive operations)
@@ -41,11 +69,28 @@ export async function POST(request: NextRequest) {
         headers: { "Content-Type": "application/json", "X-API-Key": process.env.BACKEND_API_KEY || "" },
         body: JSON.stringify(body),
       })
-      const data = await upstream.json()
+      
+      // Try to parse response as JSON
+      let data: any
+      const responseText = await upstream.text()
+      try {
+        data = JSON.parse(responseText)
+      } catch (jsonError) {
+        console.error("[API] /api/drive/upload: Failed to parse backend response:", responseText)
+        return NextResponse.json({ 
+          error: "Invalid response from backend", 
+          details: responseText.slice(0, 200)
+        }, { status: 502 })
+      }
+      
       return NextResponse.json(data, { status: upstream.status })
     }
   } catch (e) {
-    return NextResponse.json({ error: "upload_request_failed" }, { status: 500 })
+    console.error("[API] /api/drive/upload: Unexpected error:", e)
+    return NextResponse.json({ 
+      error: "upload_request_failed", 
+      details: e instanceof Error ? e.message : String(e)
+    }, { status: 500 })
   }
 }
 

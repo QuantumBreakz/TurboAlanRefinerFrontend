@@ -152,11 +152,11 @@ export default function Dashboard() {
   }, [])
 
   return (
-        <div className="min-h-screen bg-background p-6">
+        <div className="min-h-screen bg-background p-4 md:p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-light text-foreground mb-2">Turbo Alan Refiner</h1>
-            <p className="text-muted-foreground text-sm">Multi-pass text refinement with AI detection reduction</p>
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-light text-foreground mb-2">Turbo Alan Refiner</h1>
+            <p className="text-muted-foreground text-xs md:text-sm">Multi-pass text refinement with AI detection reduction</p>
           </div>
           {/* Temporarily commented out until fixed */}
           {/* <div className="mb-6">
@@ -164,55 +164,57 @@ export default function Dashboard() {
           </div> */}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 bg-muted">
-            <TabsTrigger
-              value="files"
-              className="text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Files
-            </TabsTrigger>
-            <TabsTrigger
-              value="process"
-              className="text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Process
-            </TabsTrigger>
-            <TabsTrigger
-              value="results"
-              className="text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Results
-            </TabsTrigger>
-            <TabsTrigger
-              value="diff"
-              className="text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Diff
-            </TabsTrigger>
-            <TabsTrigger
-              value="chat"
-              className="text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Chat
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              className="text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Settings
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+            <TabsList className="grid w-full min-w-max grid-cols-6 bg-muted">
+              <TabsTrigger
+                value="files"
+                className="text-xs md:text-sm text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+              >
+                Files
+              </TabsTrigger>
+              <TabsTrigger
+                value="process"
+                className="text-xs md:text-sm text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+              >
+                Process
+              </TabsTrigger>
+              <TabsTrigger
+                value="results"
+                className="text-xs md:text-sm text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+              >
+                Results
+              </TabsTrigger>
+              <TabsTrigger
+                value="diff"
+                className="text-xs md:text-sm text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+              >
+                Diff
+              </TabsTrigger>
+              <TabsTrigger
+                value="chat"
+                className="text-xs md:text-sm text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+              >
+                Chat
+              </TabsTrigger>
+              <TabsTrigger
+                value="settings"
+                className="text-xs md:text-sm text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+              >
+                Settings
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="files" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="files" className="mt-4 md:mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <FileUploadSection />
               <ProcessingQueue />
             </div>
           </TabsContent>
 
-          <TabsContent value="process" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+          <TabsContent value="process" className="mt-4 md:mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+              <div className="lg:col-span-2 space-y-4 md:space-y-6">
                 <ProcessingControls />
                 <PlanKnobs 
                   weights={plan.weights} 
@@ -225,36 +227,36 @@ export default function Dashboard() {
               <SchemaControls />
             </div>
           </TabsContent>
-          <TabsContent value="results" className="mt-6">
+          <TabsContent value="results" className="mt-4 md:mt-6">
             <ResultsViewer />
           </TabsContent>
 
-          <TabsContent value="diff" className="mt-6">
+          <TabsContent value="diff" className="mt-4 md:mt-6">
             <DiffViewer />
           </TabsContent>
 
-          <TabsContent value="chat" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="chat" className="mt-4 md:mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <ConversationalChat onSchemaUpdate={(levels: Record<string, number>) => setSchemaLevels(prev => ({ ...prev, ...levels }))} currentSchemaLevels={schemaLevels} />
               <div className="space-y-4">
                 <Card className="bg-card border-border">
                   <CardHeader>
-                    <CardTitle className="text-card-foreground">Quick Commands</CardTitle>
-                    <CardDescription className="text-muted-foreground">
+                    <CardTitle className="text-card-foreground text-base md:text-lg">Quick Commands</CardTitle>
+                    <CardDescription className="text-muted-foreground text-xs md:text-sm">
                       Common chat commands and shortcuts
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="p-3 bg-muted rounded-lg">
-                      <code className="text-primary text-sm">/schema</code>
+                      <code className="text-primary text-xs md:text-sm">/schema</code>
                       <p className="text-muted-foreground text-xs mt-1">Show current schema levels</p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
-                      <code className="text-primary text-sm">/show settings</code>
+                      <code className="text-primary text-xs md:text-sm">/show settings</code>
                       <p className="text-muted-foreground text-xs mt-1">Display current configuration</p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
-                      <code className="text-primary text-sm">/set schema:anti_scanner_techniques level=3</code>
+                      <code className="text-primary text-xs md:text-sm break-all">/set schema:anti_scanner_techniques level=3</code>
                       <p className="text-muted-foreground text-xs mt-1">Update specific schema level</p>
                     </div>
                   </CardContent>
@@ -262,15 +264,15 @@ export default function Dashboard() {
 
                 <Card className="bg-card border-border">
                   <CardHeader>
-                    <CardTitle className="text-card-foreground">Current Schema</CardTitle>
-                    <CardDescription className="text-muted-foreground">Live schema level display</CardDescription>
+                    <CardTitle className="text-card-foreground text-base md:text-lg">Current Schema</CardTitle>
+                    <CardDescription className="text-muted-foreground text-xs md:text-sm">Live schema level display</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       {Object.entries(schemaLevels).map(([key, value]) => (
                         <div key={key} className="flex justify-between p-2 bg-muted rounded">
-                          <span className="text-muted-foreground">{key.replace(/_/g, " ")}</span>
-                          <span className="text-foreground font-medium">{value}</span>
+                          <span className="text-muted-foreground truncate">{key.replace(/_/g, " ")}</span>
+                          <span className="text-foreground font-medium ml-2">{value}</span>
                         </div>
                       ))}
                     </div>
@@ -280,35 +282,35 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="settings" className="mt-4 md:mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-card-foreground">Application Settings</CardTitle>
-                  <CardDescription className="text-muted-foreground">
+                  <CardTitle className="text-card-foreground text-base md:text-lg">Application Settings</CardTitle>
+                  <CardDescription className="text-muted-foreground text-xs md:text-sm">
                     Manage your API keys and preferences
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-card-foreground">OpenAI API Key</Label>
+                    <Label className="text-card-foreground text-sm">OpenAI API Key</Label>
                     <Input
                       type="password"
                       placeholder="sk-..."
-                      className="bg-input border-border text-foreground placeholder:text-muted-foreground"
+                      className="bg-input border-border text-foreground placeholder:text-muted-foreground text-sm md:text-base"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-card-foreground">Default Model</Label>
-                    <select className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground">
+                    <Label className="text-card-foreground text-sm">Default Model</Label>
+                    <select className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground text-sm md:text-base">
                       <option value="gpt-4">GPT-4</option>
                       <option value="gpt-4-turbo">GPT-4 Turbo</option>
                       <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                     </select>
                   </div>
 
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Save Settings</Button>
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full md:w-auto">Save Settings</Button>
                 </CardContent>
               </Card>
 

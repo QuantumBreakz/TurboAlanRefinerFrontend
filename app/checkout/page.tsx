@@ -96,13 +96,13 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-16 px-6">
-      <h1 className="text-3xl font-semibold mb-2">Checkout</h1>
-      <p className="text-muted-foreground mb-8">Add your details and continue to secure payment.</p>
+    <div className="max-w-2xl mx-auto py-8 md:py-16 px-4 md:px-6">
+      <h1 className="text-2xl md:text-3xl font-semibold mb-2">Checkout</h1>
+      <p className="text-muted-foreground text-sm md:text-base mb-6 md:mb-8">Add your details and continue to secure payment.</p>
       <div className="space-y-4">
         <div>
           <label className="block text-sm mb-1">Plan</label>
-          <select className="w-full border rounded px-3 py-2" value={plan} onChange={(e)=>setPlan(e.target.value)}>
+          <select className="w-full border rounded px-3 py-2.5 md:py-2 text-sm md:text-base" value={plan} onChange={(e)=>setPlan(e.target.value)}>
             <option>Starter</option>
             <option>Pro</option>
             <option>Enterprise</option>
@@ -110,18 +110,18 @@ export default function CheckoutPage() {
         </div>
         <div>
           <label className="block text-sm mb-1">Full name</label>
-          <input className="w-full border rounded px-3 py-2" value={name} onChange={(e)=>setName(e.target.value)} placeholder="Ada Lovelace" />
+          <input className="w-full border rounded px-3 py-2.5 md:py-2 text-sm md:text-base" value={name} onChange={(e)=>setName(e.target.value)} placeholder="Ada Lovelace" />
         </div>
         <div>
           <label className="block text-sm mb-1">Email</label>
-          <input className="w-full border rounded px-3 py-2" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="ada@example.com" />
+          <input className="w-full border rounded px-3 py-2.5 md:py-2 text-sm md:text-base" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="ada@example.com" />
         </div>
         <div>
           <label className="block text-sm mb-1">Company (optional)</label>
-          <input className="w-full border rounded px-3 py-2" value={company} onChange={(e)=>setCompany(e.target.value)} placeholder="Analytical Engines, Inc." />
+          <input className="w-full border rounded px-3 py-2.5 md:py-2 text-sm md:text-base" value={company} onChange={(e)=>setCompany(e.target.value)} placeholder="Analytical Engines, Inc." />
         </div>
         <div className="pt-2">
-          <button disabled={!valid || loading || initializing} onClick={startCheckout} className="px-4 py-2 rounded-md bg-yellow-400 text-black font-medium hover:bg-yellow-500 disabled:opacity-50">
+          <button disabled={!valid || loading || initializing} onClick={startCheckout} className="w-full md:w-auto px-4 py-2.5 md:py-2 rounded-md bg-yellow-400 text-black font-medium hover:bg-yellow-500 disabled:opacity-50 text-sm md:text-base">
             {initializing ? 'Initializing...' : loading ? 'Redirecting…' : 'Continue to Payment'}
           </button>
         </div>

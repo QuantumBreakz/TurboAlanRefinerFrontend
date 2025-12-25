@@ -24,10 +24,10 @@ export default function HeroContent({ onGetStarted }: HeroContentProps) {
   }, [])
 
   return (
-    <main className="absolute bottom-8 left-8 z-20 max-w-2xl">
+    <main className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-8 md:right-auto z-20 max-w-2xl">
       <div className="text-left">
         <div
-          className="inline-flex items-center px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm mb-4 relative border border-white/20"
+          className="inline-flex items-center px-2 md:px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm mb-3 md:mb-4 relative border border-white/20"
           style={{
             filter: "url(#glass-effect)",
           }}
@@ -36,14 +36,14 @@ export default function HeroContent({ onGetStarted }: HeroContentProps) {
           <span className="text-white text-xs font-light relative z-10">✨ AI Text Refiner</span>
         </div>
 
-        <h1 className="text-5xl md:text-6xl md:leading-16 tracking-tight font-light text-white mb-6">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:leading-16 tracking-tight font-light text-white mb-4 md:mb-6">
           <span className="font-medium italic instrument">Turbo</span> Alan
           <br />
           <span className="font-light tracking-tight text-white">Refiner</span>
         </h1>
 
-        <div className="mb-6 space-y-4">
-          <p className="text-sm font-light text-white/90 leading-relaxed">
+        <div className="mb-4 md:mb-6 space-y-3 md:space-y-4">
+          <p className="text-xs sm:text-sm font-light text-white/90 leading-relaxed">
             The most advanced AI text refinement platform designed for content creators, students, and professionals who
             need human-like text that passes detection systems.
           </p>
@@ -62,35 +62,35 @@ export default function HeroContent({ onGetStarted }: HeroContentProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-6 text-xs">
-          <div className="flex items-center gap-2 text-white/70">
-            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-            Multi-pass processing
+        <div className="grid grid-cols-2 gap-2 md:gap-3 mb-4 md:mb-6 text-xs">
+          <div className="flex items-center gap-1 md:gap-2 text-white/70">
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0"></div>
+            <span className="truncate">Multi-pass processing</span>
           </div>
-          <div className="flex items-center gap-2 text-white/70">
-            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-            Batch operations
+          <div className="flex items-center gap-1 md:gap-2 text-white/70">
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0"></div>
+            <span className="truncate">Batch operations</span>
           </div>
-          <div className="flex items-center gap-2 text-white/70">
-            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-            Google Drive sync
+          <div className="flex items-center gap-1 md:gap-2 text-white/70">
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0"></div>
+            <span className="truncate">Google Drive sync</span>
           </div>
-          <div className="flex items-center gap-2 text-white/70">
-            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-            Tunable intensity
+          <div className="flex items-center gap-1 md:gap-2 text-white/70">
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0"></div>
+            <span className="truncate">Tunable intensity</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
           <button
             onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
-            className="px-8 py-3 rounded-full bg-transparent border border-white/30 text-white font-normal text-xs transition-all duration-200 hover:bg-white/10 hover:border-white/50 cursor-pointer"
+            className="px-6 md:px-8 py-2.5 md:py-3 rounded-full bg-transparent border border-white/30 text-white font-normal text-xs transition-all duration-200 hover:bg-white/10 hover:border-white/50 cursor-pointer"
           >
             Learn More
           </button>
           <button
             onClick={onGetStarted}
-            className="px-8 py-3 rounded-full bg-white text-black font-normal text-xs transition-all duration-200 hover:bg-gradient-to-r hover:from-yellow-400 hover:to-yellow-500 cursor-pointer"
+            className="px-6 md:px-8 py-2.5 md:py-3 rounded-full bg-white text-black font-normal text-xs transition-all duration-200 hover:bg-gradient-to-r hover:from-yellow-400 hover:to-yellow-500 cursor-pointer"
           >
             Get Started Free
           </button>
