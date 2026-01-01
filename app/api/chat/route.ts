@@ -11,7 +11,18 @@ export async function POST(request: NextRequest) {
   }
   
   try {
-    const body = await request.json()
+    // Parse request body with error handling
+    let body
+    try {
+      body = await request.json()
+    } catch (e) {
+      return NextResponse.json({ 
+        error: "Invalid JSON in request body",
+        message: "The request body must be valid JSON",
+        reply: "Please check your request format."
+      }, { status: 400 })
+    }
+    
     const url = `${backendUrl.replace(/\/$/, "")}/chat`
     const upstream = await fetch(url, {
       method: "POST",

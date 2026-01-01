@@ -98,10 +98,13 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   }, [refreshAnalytics])
 
   // Auto-refresh every 30 seconds
+  // Use user in deps instead of refreshAnalytics to avoid recreating interval
   useEffect(() => {
-    const interval = setInterval(refreshAnalytics, 30000)
+    const interval = setInterval(() => {
+      refreshAnalytics()
+    }, 30000)
     return () => clearInterval(interval)
-  }, [refreshAnalytics])
+  }, [user, refreshAnalytics])
 
   // Listen for processing completion events
   useEffect(() => {

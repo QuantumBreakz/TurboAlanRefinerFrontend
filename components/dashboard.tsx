@@ -17,7 +17,7 @@ import ConversationalChat from "@/components/conversational-chat"
 import PlanKnobs from "@/components/plan-knobs"
 import AdminAnalytics from "@/components/admin-analytics"
 import UsageSummary from "@/components/usage-summary"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useProcessing } from "@/contexts/ProcessingContext"
 import { FileProvider } from "@/contexts/FileContext"
 import { ProcessingProvider } from "@/contexts/ProcessingContext"
@@ -131,9 +131,15 @@ export default function Dashboard() {
     }
   }, [])
 
+  // Use ref to track previous state and only save if changed
+  const prevStateRef = useRef<string>('')
   useEffect(() => {
     try {
-      localStorage.setItem('refiner-dashboard-state', JSON.stringify({ plan, passProgress, totalPasses }))
+      const newState = JSON.stringify({ plan, passProgress, totalPasses })
+      if (newState !== prevStateRef.current) {
+        localStorage.setItem('refiner-dashboard-state', newState)
+        prevStateRef.current = newState
+      }
     } catch {}
   }, [plan, passProgress, totalPasses])
 

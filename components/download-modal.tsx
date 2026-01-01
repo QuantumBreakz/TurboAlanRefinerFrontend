@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Download, FileText } from "lucide-react"
@@ -21,6 +21,27 @@ interface DownloadModalProps {
 export default function DownloadModal({ open, onClose, downloadOptions }: DownloadModalProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [selectedPass, setSelectedPass] = useState<number | null>(null)
+  const urlRefs = useRef<string[]>([])
+  const downloadOptionsRef = useRef(downloadOptions)
+
+  // Update ref when downloadOptions changes to avoid stale closure
+  useEffect(() => {
+    downloadOptionsRef.current = downloadOptions
+  }, [downloadOptions])
+
+  // Cleanup URLs on unmount
+  useEffect(() => {
+    return () => {
+      urlRefs.current.forEach(url => {
+        try {
+          window.URL.revokeObjectURL(url)
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+      })
+      urlRefs.current = []
+    }
+  }, [])
 
   const handleDownload = async () => {
     if (!selectedFile || selectedPass === null) {
@@ -28,7 +49,8 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
       return
     }
 
-    const option = downloadOptions.find(opt => opt.fileId === selectedFile)
+    // Use ref to avoid stale closure
+    const option = downloadOptionsRef.current.find(opt => opt.fileId === selectedFile)
     const passData = option?.passes.find(p => p.passNumber === selectedPass)
 
     if (!passData) {
@@ -70,15 +92,23 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
         const textDownloadFileName = `${baseFileName}_pass${selectedPass}.txt`
         const blob = new Blob([passData.textContent], { type: 'text/plain;charset=utf-8' })
         const url = window.URL.createObjectURL(blob)
+        urlRefs.current.push(url) // Track URL for cleanup
         const a = document.createElement('a')
         a.href = url
         a.download = textDownloadFileName
         a.style.display = 'none'
         document.body.appendChild(a)
         a.click()
+        // Clean up immediately after click
         setTimeout(() => {
-          window.URL.revokeObjectURL(url)
-          document.body.removeChild(a)
+          try {
+            window.URL.revokeObjectURL(url)
+            const index = urlRefs.current.indexOf(url)
+            if (index > -1) urlRefs.current.splice(index, 1)
+            document.body.removeChild(a)
+          } catch (e) {
+            // Ignore cleanup errors
+          }
         }, 100)
         onClose()
         return
@@ -99,15 +129,23 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
           const textFallbackFileName = `${baseFileName}_pass${selectedPass}.txt`
           const blob = new Blob([passData.textContent], { type: 'text/plain;charset=utf-8' })
           const url = window.URL.createObjectURL(blob)
+          urlRefs.current.push(url) // Track URL for cleanup
           const a = document.createElement('a')
           a.href = url
           a.download = textFallbackFileName
           a.style.display = 'none'
           document.body.appendChild(a)
           a.click()
+          // Clean up immediately after click
           setTimeout(() => {
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
+            try {
+              window.URL.revokeObjectURL(url)
+              const index = urlRefs.current.indexOf(url)
+              if (index > -1) urlRefs.current.splice(index, 1)
+              document.body.removeChild(a)
+            } catch (e) {
+              // Ignore cleanup errors
+            }
           }, 100)
           onClose()
           return
@@ -120,13 +158,21 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
       
       // Create a download link and trigger it
       const url = window.URL.createObjectURL(blob)
+      urlRefs.current.push(url) // Track URL for cleanup
       const a = document.createElement('a')
       a.href = url
       a.download = downloadFileName
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
+      // Clean up URL
+      try {
+        window.URL.revokeObjectURL(url)
+        const index = urlRefs.current.indexOf(url)
+        if (index > -1) urlRefs.current.splice(index, 1)
+      } catch (e) {
+        // Ignore cleanup errors
+      }
       
       // Close modal after successful download
       onClose()

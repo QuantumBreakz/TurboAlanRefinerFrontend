@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -42,18 +42,13 @@ export default function ResultsViewer() {
   const [error, setError] = useState<string | null>(null)
   const [selectedFileForDiff, setSelectedFileForDiff] = useState<ProcessedFile | null>(null)
   const { processingEvents } = useProcessing()
+  const cancelledRef = useRef(false)
 
-  // Combined data loading from both events and API
-  useEffect(() => {
-    const loadAllData = async () => {
-      try {
-        setLoading(true)
-        
-        // Transform processing events into processed files
-        const transformEventsToFiles = () => {
-          const fileMap = new Map<string, ProcessedFile>()
-          
-          processingEvents.forEach(event => {
+  // Transform processing events into processed files
+  const transformEventsToFiles = useCallback(() => {
+    const fileMap = new Map<string, ProcessedFile>()
+    
+    processingEvents.forEach(event => {
             if (!event.fileId || !event.fileName) return
             
             const existing = fileMap.get(event.fileId) || {
@@ -127,17 +122,30 @@ export default function ResultsViewer() {
             fileMap.set(event.fileId, existing)
           })
 
-          return Array.from(fileMap.values())
-        }
+    return Array.from(fileMap.values())
+  }, [processingEvents])
 
-        // Get files from processing events
-        const eventFiles = transformEventsToFiles()
+  // Combined data loading from both events and API
+  const loadAllData = useCallback(async () => {
+    cancelledRef.current = false
+    try {
+      setLoading(true)
+      
+      // Get files from processing events
+      const eventFiles = transformEventsToFiles()
+      
+      // Check if cancelled before async operation
+      if (cancelledRef.current) return
+      
+      // Get completed jobs from API
+      let apiFiles: ProcessedFile[] = []
+      try {
+        const jobs = await refinerClient.getJobs()
         
-        // Get completed jobs from API
-        let apiFiles: ProcessedFile[] = []
-        try {
-          const jobs = await refinerClient.getJobs()
-          apiFiles = jobs.jobs?.map((job: any) => ({
+        // Check if cancelled after async operation
+        if (cancelledRef.current) return
+        
+        apiFiles = jobs.jobs?.map((job: any) => ({
             id: job.id,
             originalName: job.fileName || "Unknown file",
             passes: job.passes || 0,
@@ -242,17 +250,26 @@ export default function ResultsViewer() {
                  (file.passes > 0 || file.outputFiles.length > 0 || file.status === "completed" || file.status === "error")
         })
         
+        // Check if cancelled before setting state
+        if (cancelledRef.current) return
+        
         setProcessedFiles(finalFiles)
       } catch (err) {
-        
+        if (cancelledRef.current) return
         setError("Failed to load job results")
       } finally {
-        setLoading(false)
+        if (!cancelledRef.current) {
+          setLoading(false)
+        }
       }
-    }
+    }, [transformEventsToFiles])
 
+  useEffect(() => {
     loadAllData()
-  }, [processingEvents])
+    return () => {
+      cancelledRef.current = true
+    }
+  }, [loadAllData])
 
   // Listen for processing completion events to refresh data
   useEffect(() => {

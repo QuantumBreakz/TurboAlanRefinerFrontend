@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface ChatMessage {
   id: string
@@ -23,6 +24,7 @@ interface ConversationalChatProps {
 }
 
 export default function ConversationalChat({ onSchemaUpdate, currentSchemaLevels }: ConversationalChatProps) {
+  const { user } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "1",
@@ -79,7 +81,11 @@ export default function ConversationalChat({ onSchemaUpdate, currentSchemaLevels
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, schemaLevels: currentSchemaLevels }),
+        body: JSON.stringify({ 
+          message, 
+          schemaLevels: currentSchemaLevels,
+          user_id: user?.id || "default"
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
