@@ -506,6 +506,64 @@ export class RefinerClient {
     return response.json()
   }
 
+  /**
+   * Export a refined document to Google Docs.
+   * 
+   * @param jobId - The job ID of the refinement job
+   * @param folderId - Optional Google Drive folder ID to save the document in
+   * @returns Promise with export result including doc_id, doc_url, title, and warnings
+   * 
+   * @example
+   * ```ts
+   * const result = await refinerClient.exportToGoogleDocs(jobId, folderId)
+   * if (result.status === 'success') {
+   *   window.open(result.doc_url, '_blank')
+   * }
+   * ```
+   */
+  async exportToGoogleDocs(jobId: string, folderId?: string): Promise<{
+    status: "success" | "partial_success" | "error"
+    doc_id: string | null
+    doc_url: string | null
+    title: string | null
+    warnings: string[]
+    error?: string
+  }> {
+    const body: any = {}
+    if (folderId) {
+      body.folder_id = folderId
+    }
+
+    const response = await fetch(`${this.baseUrl}/jobs/${encodeURIComponent(jobId)}/export-google-doc`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
+    })
+
+    const payload = await response.json().catch(() => ({
+      status: "error",
+      doc_id: null,
+      doc_url: null,
+      title: null,
+      warnings: ["failed_to_parse_response"],
+      error: `HTTP ${response.status}: ${response.statusText}`
+    }))
+
+    if (!response.ok) {
+      // Ensure payload has error structure
+      return {
+        status: "error",
+        doc_id: null,
+        doc_url: null,
+        title: null,
+        warnings: payload.warnings || ["export_failed"],
+        error: payload.error || `HTTP error! status: ${response.status}`
+      }
+    }
+
+    return payload
+  }
+
   // Advanced Pipeline Operations
   async analyzeText(text: string, analysisTypes: string[] = ["microstructure", "macrostructure", "keywords", "structure"]) {
     const response = await fetch(`${this.baseUrl}/pipeline/analyze`, {

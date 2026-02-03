@@ -9,7 +9,9 @@ import { ProcessingProvider } from "@/contexts/ProcessingContext"
 import { SchemaProvider } from "@/contexts/SchemaContext"
 import { AnalyticsProvider } from "@/contexts/AnalyticsContext"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { WorkspaceProvider } from "@/contexts/WorkspaceContext"
 import { LoadingProvider } from "@/contexts/LoadingContext"
+import { ChatProvider } from "@/contexts/ChatContext"
 import LoadingBar from "@/components/loading-bar"
 import GlobalLoadingBar from "@/components/global-loading-bar"
 import { PriceInitializer } from "@/components/price-initializer"
@@ -47,19 +49,23 @@ export default function RootLayout({
       <body>
         <LoadingProvider>
           <AuthProvider>
-            <FileProvider>
-              <ProcessingProvider>
-                <SchemaProvider>
-                  <AnalyticsProvider>
-                    <StripeErrorHandler />
-                    <PriceInitializer />
-                    <LoadingBar />
-                    <GlobalLoadingBar />
-                    {children}
-                  </AnalyticsProvider>
-                </SchemaProvider>
-              </ProcessingProvider>
-            </FileProvider>
+            <ChatProvider>
+              <WorkspaceProvider>
+                <FileProvider>
+                  <ProcessingProvider>
+                    <SchemaProvider>
+                      <AnalyticsProvider>
+                        <StripeErrorHandler />
+                        <PriceInitializer />
+                        <LoadingBar />
+                        <GlobalLoadingBar />
+                        {children}
+                      </AnalyticsProvider>
+                    </SchemaProvider>
+                  </ProcessingProvider>
+                </FileProvider>
+              </WorkspaceProvider>
+            </ChatProvider>
           </AuthProvider>
         </LoadingProvider>
       </body>

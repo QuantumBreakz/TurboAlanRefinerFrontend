@@ -13,7 +13,9 @@ import ProcessingControls from "@/components/processing-controls"
 import ResultsViewer from "@/components/results-viewer"
 import LogViewer from "@/components/log-viewer"
 import DiffViewer from "@/components/diff-viewer"
-import ConversationalChat from "@/components/conversational-chat"
+// import ConversationalChat from "@/components/conversational-chat"  // OLD - Replaced with ChatSessions
+// import CollaborativeChat from "@/components/collaborative-chat"  // OLD - Replaced with ChatSessions
+import ChatSessions from "@/components/chat-sessions"
 import PlanKnobs from "@/components/plan-knobs"
 import AdminAnalytics from "@/components/admin-analytics"
 import UsageSummary from "@/components/usage-summary"
@@ -242,28 +244,48 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="chat" className="mt-4 md:mt-6">
+            {/* NEW: ChatGPT-style session management */}
+            <ChatSessions />
+            
+            {/* OLD: Replaced with ChatSessions component above
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-              <ConversationalChat onSchemaUpdate={(levels: Record<string, number>) => setSchemaLevels(prev => ({ ...prev, ...levels }))} currentSchemaLevels={schemaLevels} />
+              <CollaborativeChat 
+                onSchemaUpdate={(levels: Record<string, number>) => setSchemaLevels(prev => ({ ...prev, ...levels }))} 
+                currentSchemaLevels={schemaLevels} 
+              />
               <div className="space-y-4">
                 <Card className="bg-card border-border">
                   <CardHeader>
-                    <CardTitle className="text-card-foreground text-base md:text-lg">Quick Commands</CardTitle>
+                    <CardTitle className="text-card-foreground text-base md:text-lg">Collaboration Features</CardTitle>
                     <CardDescription className="text-muted-foreground text-xs md:text-sm">
-                      Common chat commands and shortcuts
+                      Real-time document collaboration
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="p-3 bg-muted rounded-lg">
-                      <code className="text-primary text-xs md:text-sm">/schema</code>
-                      <p className="text-muted-foreground text-xs mt-1">Show current schema levels</p>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-foreground text-sm font-medium">Live Sync</span>
+                      </div>
+                      <p className="text-muted-foreground text-xs mt-1">Messages sync in real-time across all collaborators</p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
-                      <code className="text-primary text-xs md:text-sm">/show settings</code>
-                      <p className="text-muted-foreground text-xs mt-1">Display current configuration</p>
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                        </svg>
+                        <span className="text-foreground text-sm font-medium">Multi-User</span>
+                      </div>
+                      <p className="text-muted-foreground text-xs mt-1">Invite team members to collaborate on documents</p>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
-                      <code className="text-primary text-xs md:text-sm break-all">/set schema:anti_scanner_techniques level=3</code>
-                      <p className="text-muted-foreground text-xs mt-1">Update specific schema level</p>
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-foreground text-sm font-medium">Document Context</span>
+                      </div>
+                      <p className="text-muted-foreground text-xs mt-1">AI understands your document for better assistance</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -286,6 +308,7 @@ export default function Dashboard() {
                 </Card>
               </div>
             </div>
+            */}
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4 md:mt-6">

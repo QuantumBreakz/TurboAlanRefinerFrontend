@@ -453,9 +453,12 @@ export default function ProcessingControls() {
                       (schemaLevels.find(s => s.id === 'annotation_mode')?.value || 0) === 2 ? 'medium' : 'high'
           },
           heuristics: {
-            microstructure_control: (schemaLevels.find(s => s.id === 'microstructure_control')?.value || 2) > 0,
-            macrostructure_analysis: (schemaLevels.find(s => s.id === 'macrostructure_analysis')?.value || 1) > 0,
-            anti_scanner_techniques: (schemaLevels.find(s => s.id === 'anti_scanner_techniques')?.value || 3) > 0,
+            // CRITICAL FIX: Wrap schema flags in schema_flags object for backend compatibility
+            schema_flags: {
+              microstructure_control: (schemaLevels.find(s => s.id === 'microstructure_control')?.value || 2) > 0,
+              macrostructure_analysis: (schemaLevels.find(s => s.id === 'macrostructure_analysis')?.value || 1) > 0,
+              anti_scanner_techniques: (schemaLevels.find(s => s.id === 'anti_scanner_techniques')?.value || 3) > 0,
+            },
             refiner_control: schemaLevels.find(s => s.id === 'refiner_control')?.value || 2,
             entropy_management: schemaLevels.find(s => s.id === 'entropy_management')?.value || 2,
             semantic_tone_tuning: schemaLevels.find(s => s.id === 'semantic_tone_tuning')?.value || 1,
@@ -874,10 +877,12 @@ export default function ProcessingControls() {
           preset: settings.preset || undefined,
           // Map schema levels to heuristics for backend processing
           heuristics: {
-            // Core processing flags
-            microstructure_control: (schemaLevels.find(s => s.id === 'microstructure_control')?.value || 2) > 0,
-            macrostructure_analysis: (schemaLevels.find(s => s.id === 'macrostructure_analysis')?.value || 1) > 0,
-            anti_scanner_techniques: (schemaLevels.find(s => s.id === 'anti_scanner_techniques')?.value || 3) > 0,
+            // CRITICAL FIX: Wrap schema flags in schema_flags object for backend compatibility
+            schema_flags: {
+              microstructure_control: (schemaLevels.find(s => s.id === 'microstructure_control')?.value || 2) > 0,
+              macrostructure_analysis: (schemaLevels.find(s => s.id === 'macrostructure_analysis')?.value || 1) > 0,
+              anti_scanner_techniques: (schemaLevels.find(s => s.id === 'anti_scanner_techniques')?.value || 3) > 0,
+            },
             
             // Control levels
             refiner_control: schemaLevels.find(s => s.id === 'refiner_control')?.value || 2,
@@ -1734,6 +1739,10 @@ export default function ProcessingControls() {
     <DownloadModal 
       open={downloadModalOpen}
       onClose={() => setDownloadModalOpen(false)}
+      jobId={
+        currentJobIdRef.current ||
+        (processingEvents.length > 0 ? processingEvents[processingEvents.length - 1]?.jobId || null : null)
+      }
       downloadOptions={completedFiles}
     />
     </div>

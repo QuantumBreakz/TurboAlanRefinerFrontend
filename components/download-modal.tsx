@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Download, FileText } from "lucide-react"
+import { Download, FileText, Cloud, Loader2, CheckCircle2, XCircle } from "lucide-react"
+import { refinerClient } from "@/lib/refiner-client"
 
 interface DownloadOption {
   fileId: string
@@ -15,12 +16,20 @@ interface DownloadOption {
 interface DownloadModalProps {
   open: boolean
   onClose: () => void
+  jobId: string | null
   downloadOptions: DownloadOption[]
 }
 
-export default function DownloadModal({ open, onClose, downloadOptions }: DownloadModalProps) {
+export default function DownloadModal({ open, onClose, jobId, downloadOptions }: DownloadModalProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [selectedPass, setSelectedPass] = useState<number | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [isExportingToGoogleDocs, setIsExportingToGoogleDocs] = useState(false)
+  const [exportStatus, setExportStatus] = useState<{
+    type: "success" | "error" | null
+    message: string
+    docUrl?: string
+  }>({ type: null, message: "" })
   const urlRefs = useRef<string[]>([])
   const downloadOptionsRef = useRef(downloadOptions)
 
@@ -49,6 +58,11 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
       return
     }
 
+    if (!jobId) {
+      alert("No active job found for download")
+      return
+    }
+
     // Use ref to avoid stale closure
     const option = downloadOptionsRef.current.find(opt => opt.fileId === selectedFile)
     const passData = option?.passes.find(p => p.passNumber === selectedPass)
@@ -58,127 +72,184 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
       return
     }
 
+    setIsDownloading(true)
+    setExportStatus({ type: null, message: "" })
+
     try {
-      // CRITICAL FIX: Determine the correct file extension
-      // Priority: 1) From path, 2) From option.fileExtension, 3) Default to .txt
-      const getFileExtension = () => {
-        if (passData.path) {
-          const pathExt = passData.path.split('.').pop()?.toLowerCase()
-          if (pathExt && ['docx', 'doc', 'pdf', 'txt', 'md'].includes(pathExt)) {
-            return `.${pathExt}`
+      // Call backend export API via Next proxy to enforce same-format contract
+      const exportResponse = await fetch(
+        `/api/jobs/${encodeURIComponent(jobId)}/export_pass` +
+        `?file_id=${encodeURIComponent(option.fileId)}` +
+        `&pass=${encodeURIComponent(String(selectedPass))}` +
+        `&format=same`
+      )
+
+      if (!exportResponse.ok) {
+        const errorPayload = await exportResponse.json().catch(() => null)
+        const message =
+          (errorPayload && (errorPayload.error || errorPayload.message)) ||
+          "Export failed"
+        throw new Error(message)
+      }
+
+      const exportPayload = await exportResponse.json() as {
+        status: string
+        format: string | null
+        download_url: string | null
+        file_content?: string  // Base64 encoded file content (Vercel/serverless)
+        filename?: string      // Filename for serverless mode
+        warnings?: string[]
+      }
+
+      if (exportPayload.status !== "success" && exportPayload.status !== "partial_success") {
+        throw new Error("Export failed with status: " + exportPayload.status)
+      }
+
+      // HYBRID APPROACH: Handle both Vercel (serverless) and traditional deployments
+      let filename = ""
+      let downloadUrl = ""
+
+      if (exportPayload.file_content && exportPayload.filename) {
+        // Serverless mode: File content included directly as base64
+        filename = exportPayload.filename
+        
+        // Decode base64 and create blob URL for download
+        try {
+          const binaryString = atob(exportPayload.file_content)
+          const bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          const blob = new Blob([bytes])
+          downloadUrl = URL.createObjectURL(blob)
+        } catch (e) {
+          throw new Error("Failed to decode file content from serverless response")
+        }
+      } else if (exportPayload.download_url) {
+        // Traditional mode: Download via URL
+        downloadUrl = exportPayload.download_url
+        
+        // Extract filename from backend download_url (/files/serve?filename=...)
+        try {
+          const urlObj = new URL(exportPayload.download_url, window.location.origin)
+          filename = urlObj.searchParams.get("filename") || ""
+        } catch {
+          const parts = exportPayload.download_url.split("filename=")
+          if (parts.length > 1) {
+            filename = decodeURIComponent(parts[1])
           }
         }
-        if (option?.fileExtension) {
-          return option.fileExtension.startsWith('.') ? option.fileExtension : `.${option.fileExtension}`
+
+        if (!filename) {
+          throw new Error("Invalid download URL returned from export")
         }
-        // Extract from original filename if possible
-        const origExt = option?.fileName?.split('.').pop()?.toLowerCase()
-        if (origExt && ['docx', 'doc', 'pdf', 'txt', 'md'].includes(origExt)) {
-          return `.${origExt}`
-        }
-        return '.txt'  // Default fallback
-      }
-      
-      const fileExtension = getFileExtension()
-      const baseFileName = option?.fileName?.replace(/\.[^/.]+$/, '') || 'download'  // Remove existing extension
-      const downloadFileName = `${baseFileName}_pass${selectedPass}${fileExtension}`
-      
-      // CRITICAL FIX: Use textContent first (reliable on Vercel), then fall back to path-based download
-      if (passData.textContent) {
-        // Client-side download using textContent (works on Vercel)
-        // IMPORTANT: textContent is always plain text - use .txt extension to avoid confusing users
-        // who might expect a .docx to open in Word. The path-based download below will use the
-        // actual file format if available.
-        const textDownloadFileName = `${baseFileName}_pass${selectedPass}.txt`
-        const blob = new Blob([passData.textContent], { type: 'text/plain;charset=utf-8' })
-        const url = window.URL.createObjectURL(blob)
-        urlRefs.current.push(url) // Track URL for cleanup
-        const a = document.createElement('a')
-        a.href = url
-        a.download = textDownloadFileName
-        a.style.display = 'none'
-        document.body.appendChild(a)
-        a.click()
-        // Clean up immediately after click
-        setTimeout(() => {
-          try {
-            window.URL.revokeObjectURL(url)
-            const index = urlRefs.current.indexOf(url)
-            if (index > -1) urlRefs.current.splice(index, 1)
-            document.body.removeChild(a)
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-        }, 100)
-        onClose()
-        return
+      } else {
+        throw new Error("Export did not return a downloadable file (no URL or content)")
       }
 
-      // Fallback to path-based download if textContent not available
-      if (!passData.path) {
-        throw new Error("No file content or path available for download")
-      }
-
-      const response = await fetch(`/api/files/download?path=${encodeURIComponent(passData.path)}`)
+      // Download actual file
+      let finalDownloadUrl = ""
       
-      if (!response.ok) {
-        const errorText = await response.text()
-        // If file not found and we have textContent, use it (shouldn't happen but safety check)
-        if (response.status === 404 && passData.textContent) {
-          // Use .txt extension for textContent (plain text) to avoid confusing users
-          const textFallbackFileName = `${baseFileName}_pass${selectedPass}.txt`
-          const blob = new Blob([passData.textContent], { type: 'text/plain;charset=utf-8' })
-          const url = window.URL.createObjectURL(blob)
-          urlRefs.current.push(url) // Track URL for cleanup
-          const a = document.createElement('a')
-          a.href = url
-          a.download = textFallbackFileName
-          a.style.display = 'none'
-          document.body.appendChild(a)
-          a.click()
-          // Clean up immediately after click
-          setTimeout(() => {
-            try {
-              window.URL.revokeObjectURL(url)
-              const index = urlRefs.current.indexOf(url)
-              if (index > -1) urlRefs.current.splice(index, 1)
-              document.body.removeChild(a)
-            } catch (e) {
-              // Ignore cleanup errors
-            }
-          }, 100)
-          onClose()
-          return
+      if (exportPayload.file_content) {
+        // Serverless mode: We already have the blob URL from decoded base64
+        finalDownloadUrl = downloadUrl
+        urlRefs.current.push(finalDownloadUrl)
+      } else {
+        // Traditional mode: Fetch via Next.js proxy (handles headers, content type, etc.)
+        const fileResponse = await fetch(`/api/files/download?path=${encodeURIComponent(filename)}`)
+        if (!fileResponse.ok) {
+          const errorText = await fileResponse.text()
+          throw new Error(errorText || fileResponse.statusText || "File download failed")
         }
-        throw new Error(`Download failed: ${errorText || response.statusText}`)
+
+        const blob = await fileResponse.blob()
+        finalDownloadUrl = window.URL.createObjectURL(blob)
+        urlRefs.current.push(finalDownloadUrl)
       }
 
-      // Get the blob
-      const blob = await response.blob()
-      
-      // Create a download link and trigger it
-      const url = window.URL.createObjectURL(blob)
-      urlRefs.current.push(url) // Track URL for cleanup
       const a = document.createElement('a')
-      a.href = url
-      a.download = downloadFileName
+      a.href = finalDownloadUrl
+      a.download = filename  // Set filename for download
+      a.style.display = 'none'
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      // Clean up URL
+
       try {
-        window.URL.revokeObjectURL(url)
-        const index = urlRefs.current.indexOf(url)
+        window.URL.revokeObjectURL(finalDownloadUrl)
+        const index = urlRefs.current.indexOf(finalDownloadUrl)
         if (index > -1) urlRefs.current.splice(index, 1)
-      } catch (e) {
+      } catch {
         // Ignore cleanup errors
       }
-      
-      // Close modal after successful download
+
       onClose()
     } catch (error) {
       console.error("Download error:", error)
       alert(`Failed to download file: ${error instanceof Error ? error.message : "Unknown error"}`)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  const handleExportToGoogleDocs = async () => {
+    if (!jobId) {
+      setExportStatus({ type: "error", message: "No active job found" })
+      return
+    }
+
+    setIsExportingToGoogleDocs(true)
+    setExportStatus({ type: null, message: "" })
+
+    try {
+      console.log(`[Google Docs Export] Starting export for job ${jobId}`)
+      
+      const result = await refinerClient.exportToGoogleDocs(jobId)
+      
+      if (result.status === "success" || result.status === "partial_success") {
+        console.log(`[Google Docs Export] Success! Doc ID: ${result.doc_id}`)
+        
+        const warningMessage = result.warnings.length > 0 
+          ? ` (with warnings: ${result.warnings.join(", ")})`
+          : ""
+        
+        setExportStatus({
+          type: "success",
+          message: `Successfully exported to Google Docs${warningMessage}`,
+          docUrl: result.doc_url || undefined
+        })
+
+        // Auto-open the Google Doc in a new tab
+        if (result.doc_url) {
+          setTimeout(() => {
+            window.open(result.doc_url!, "_blank", "noopener,noreferrer")
+          }, 500)
+        }
+
+        // Auto-close the modal after a short delay to show success message
+        setTimeout(() => {
+          onClose()
+        }, 2500)
+      } else {
+        console.error(`[Google Docs Export] Failed:`, result)
+        const errorMessage = result.error || "Export failed"
+        const warningDetails = result.warnings.length > 0 
+          ? ` (${result.warnings.join(", ")})` 
+          : ""
+        
+        setExportStatus({
+          type: "error",
+          message: `${errorMessage}${warningDetails}`
+        })
+      }
+    } catch (error) {
+      console.error("[Google Docs Export] Unexpected error:", error)
+      setExportStatus({
+        type: "error",
+        message: `Failed to export: ${error instanceof Error ? error.message : "Unknown error"}`
+      })
+    } finally {
+      setIsExportingToGoogleDocs(false)
     }
   }
 
@@ -260,17 +331,78 @@ export default function DownloadModal({ open, onClose, downloadOptions }: Downlo
           )}
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+        {/* Export Status Banner */}
+        {exportStatus.type && (
+          <div className={`p-3 rounded-lg border flex items-start gap-2 ${
+            exportStatus.type === "success" 
+              ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900" 
+              : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900"
+          }`}>
+            {exportStatus.type === "success" ? (
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            ) : (
+              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1">
+              <p className={`text-sm font-medium ${
+                exportStatus.type === "success"
+                  ? "text-green-800 dark:text-green-200"
+                  : "text-red-800 dark:text-red-200"
+              }`}>
+                {exportStatus.message}
+              </p>
+              {exportStatus.docUrl && (
+                <a
+                  href={exportStatus.docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-green-700 dark:text-green-300 hover:underline mt-1 inline-block"
+                >
+                  Open in Google Docs →
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={isDownloading || isExportingToGoogleDocs}>
             Cancel
           </Button>
           <Button 
+            onClick={handleExportToGoogleDocs}
+            disabled={!jobId || isDownloading || isExportingToGoogleDocs}
+            variant="outline"
+            className="border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+          >
+            {isExportingToGoogleDocs ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Cloud className="h-4 w-4 mr-2" />
+                Save to Google Docs
+              </>
+            )}
+          </Button>
+          <Button 
             onClick={handleDownload}
-            disabled={!selectedFile || selectedPass === null}
+            disabled={!selectedFile || selectedPass === null || isDownloading || isExportingToGoogleDocs}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            <Download className="h-4 w-4 mr-2" />
-            Download
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </>
+            )}
           </Button>
         </div>
       </DialogContent>
