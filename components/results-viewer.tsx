@@ -513,7 +513,10 @@ export default function ResultsViewer() {
               fileId={file.id}
               fileName={file.originalName}
               currentPass={file.passes}
-              totalPasses={file.passes + 1}
+              // Use the actual highest pass number we've seen as the total,
+              // instead of adding 1 (which made it look like there was always
+              // one more pass pending than requested).
+              totalPasses={Math.max(file.passes, 1)}
               passData={generateProgressData(file.id)}
             />
           ))}
