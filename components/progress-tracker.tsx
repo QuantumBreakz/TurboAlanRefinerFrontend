@@ -404,7 +404,8 @@ export default function ProgressTracker({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
 
         {/* Toggle for metrics alignment */}
         <div className="flex items-center justify-between pt-4 border-t border-border">
