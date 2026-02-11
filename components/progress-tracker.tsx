@@ -227,6 +227,164 @@ export default function ProgressTracker({
     })
   }
 
+  const renderPassRow = (pass: PassData) => {
+    // Compute simple stage-based progress for this pass
+    const totalStages = pass.stages.length || 1
+    const completedStages = pass.stages.filter((s) => s.status === "completed").length
+    const errorStages = pass.stages.some((s) => s.status === "error")
+    const rawPercent = (completedStages / totalStages) * 100
+    const percent = Math.min(100, Math.max(0, rawPercent))
+
+    return (
+      <div key={pass.passNumber} className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h4 className="text-foreground font-semibold">Pass {pass.passNumber}</h4>
+            {/* Per-pass progress bar */}
+            <div className="w-full max-w-xs">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-muted-foreground">
+                  {errorStages
+                    ? "Encountered an error in this pass"
+                    : percent >= 100
+                      ? "Completed"
+                      : `Working through ${totalStages} stages...`}
+                </span>
+                <span className="text-[11px] text-muted-foreground font-medium">
+                  {Math.round(percent)}%
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    errorStages
+                      ? "bg-red-500"
+                      : pass.passNumber === currentPass
+                        ? "bg-blue-500"
+                        : "bg-emerald-500"
+                  }`}
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          {pass.passNumber === currentPass && (
+            <Badge className="bg-blue-100 text-blue-800 border-blue-200 rounded-full px-3 py-1">Current</Badge>
+          )}
+        </div>
+
+        {/* Stage Chips */}
+        <div className="flex flex-wrap gap-2 w-full p-4 bg-muted/50 rounded-xl border border-border">
+          {pass.stages.map((stage) => (
+            <div 
+              key={stage.name} 
+              className={`px-3 py-1.5 rounded-lg text-xs border ${getStageColor(stage.status)}`}
+              style={{ minWidth: 'fit-content' }}
+            >
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                {getStageIcon(stage.status)}
+                <span className="font-medium">{stage.name}</span>
+                {stage.duration && (
+                  <span className="text-xs opacity-70">
+                    ({typeof stage.duration === 'number' ? stage.duration.toFixed(2) : stage.duration}ms)
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Sparklines - Fixed with proper containment */}
+        {pass.sparklineData && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-4 bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-xl border border-gray-200 overflow-hidden">
+            <div
+              onMouseEnter={(e) => handleSparklineHover(e, pass.passNumber)}
+              onMouseLeave={() => setShowTooltip(null)}
+              className="cursor-pointer hover:bg-white/80 rounded-xl p-3 transition-all duration-200 border border-transparent hover:border-blue-200 hover:shadow-sm"
+            >
+              {renderSparkline(
+                passData.slice(0, pass.passNumber).map((p) => p.sparklineData.changePercent),
+                "#3b82f6",
+                "Change %",
+              )}
+            </div>
+            <div
+              onMouseEnter={(e) => handleSparklineHover(e, pass.passNumber)}
+              onMouseLeave={() => setShowTooltip(null)}
+              className="cursor-pointer hover:bg-white/80 rounded-xl p-3 transition-all duration-200 border border-transparent hover:border-green-200 hover:shadow-sm"
+            >
+              {renderSparkline(
+                passData.slice(0, pass.passNumber).map((p) => p.sparklineData.tensionPercent),
+                "#10b981",
+                "Tension %",
+              )}
+            </div>
+            <div
+              onMouseEnter={(e) => handleSparklineHover(e, pass.passNumber)}
+              onMouseLeave={() => setShowTooltip(null)}
+              className="cursor-pointer hover:bg-white/80 rounded-xl p-3 transition-all duration-200 border border-transparent hover:border-amber-200 hover:shadow-sm"
+            >
+              {renderSparkline(
+                passData.slice(0, pass.passNumber).map((p) => p.sparklineData.normalizedLatency),
+                "#f59e0b",
+                "Latency",
+              )}
+            </div>
+            <div
+              onMouseEnter={(e) => handleSparklineHover(e, pass.passNumber)}
+              onMouseLeave={() => setShowTooltip(null)}
+              className="cursor-pointer hover:bg-white/80 rounded-xl p-3 transition-all duration-200 border border-transparent hover:border-red-200 hover:shadow-sm"
+            >
+              {renderSparkline(
+                passData.slice(0, pass.passNumber).map((p) => p.sparklineData.previousPassRisk),
+                "#ef4444",
+                "Risk %",
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Detailed Metrics (Toggle-aligned) */}
+        {pass.metrics && metricsAligned && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden">
+            <div className="text-center p-2 bg-white/60 rounded-lg">
+              <div className="text-xs text-muted-foreground font-medium">Punct/100w</div>
+              <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.punctuationPer100Words.toFixed(1)}</div>
+            </div>
+            <div className="text-center p-2 bg-white/60 rounded-lg">
+              <div className="text-xs text-muted-foreground font-medium">Sentences</div>
+              <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.sentences}</div>
+            </div>
+            <div className="text-center p-2 bg-white/60 rounded-lg">
+              <div className="text-xs text-muted-foreground font-medium">Transitions</div>
+              <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.transitions}</div>
+            </div>
+            <div className="text-center p-2 bg-white/60 rounded-lg">
+              <div className="text-xs text-muted-foreground font-medium">Rhythm CV</div>
+              <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.rhythmCV.toFixed(2)}</div>
+            </div>
+            <div className="text-center p-2 bg-white/60 rounded-lg">
+              <div className="text-xs text-muted-foreground font-medium">Keywords</div>
+              <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.keywords}</div>
+            </div>
+            <div className="text-center p-2 bg-white/60 rounded-lg">
+              <div className="text-xs text-muted-foreground font-medium">Synonym Rate</div>
+              <div className="text-sm text-foreground font-semibold mt-1">{(pass.metrics.synonymRate * 100).toFixed(1)}%</div>
+            </div>
+            <div className="text-center p-2 bg-white/60 rounded-lg">
+              <div className="text-xs text-muted-foreground font-medium">Grammar Issues</div>
+              <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.grammarIssues}</div>
+            </div>
+            <div className="text-center p-2 bg-white/60 rounded-lg">
+              <div className="text-xs text-muted-foreground font-medium">Edits/100w</div>
+              <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.editsPer100Words.toFixed(1)}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <Card className="bg-card border-border w-full rounded-xl shadow-md">
       <CardHeader className="border-b border-border bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-t-xl">
@@ -249,163 +407,7 @@ export default function ProgressTracker({
         </div>
       </CardHeader>
       <CardContent className="space-y-6 p-5">
-        {passData.map((pass) => {
-          // Compute simple stage-based progress for this pass
-          const totalStages = pass.stages.length || 1
-          const completedStages = pass.stages.filter((s) => s.status === "completed").length
-          const errorStages = pass.stages.some((s) => s.status === "error")
-          const rawPercent = (completedStages / totalStages) * 100
-          const percent = Math.min(100, Math.max(0, rawPercent))
-
-          return (
-          <div key={pass.passNumber} className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h4 className="text-foreground font-semibold">Pass {pass.passNumber}</h4>
-                {/* Per-pass progress bar */}
-                <div className="w-full max-w-xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] text-muted-foreground">
-                      {errorStages
-                        ? "Encountered an error in this pass"
-                        : percent >= 100
-                          ? "Completed"
-                          : `Working through ${totalStages} stages...`}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground font-medium">
-                      {Math.round(percent)}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        errorStages
-                          ? "bg-red-500"
-                          : pass.passNumber === currentPass
-                            ? "bg-blue-500"
-                            : "bg-emerald-500"
-                      }`}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-              {pass.passNumber === currentPass && (
-                <Badge className="bg-blue-100 text-blue-800 border-blue-200 rounded-full px-3 py-1">Current</Badge>
-              )}
-            </div>
-
-            {/* Stage Chips */}
-            <div className="flex flex-wrap gap-2 w-full p-4 bg-muted/50 rounded-xl border border-border">
-              {pass.stages.map((stage) => (
-                <div 
-                  key={stage.name} 
-                  className={`px-3 py-1.5 rounded-lg text-xs border ${getStageColor(stage.status)}`}
-                  style={{ minWidth: 'fit-content' }}
-                >
-                  <div className="flex items-center gap-1.5 whitespace-nowrap">
-                    {getStageIcon(stage.status)}
-                    <span className="font-medium">{stage.name}</span>
-                    {stage.duration && (
-                      <span className="text-xs opacity-70">
-                        ({typeof stage.duration === 'number' ? stage.duration.toFixed(2) : stage.duration}ms)
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Sparklines - Fixed with proper containment */}
-            {pass.sparklineData && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-4 bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-xl border border-gray-200 overflow-hidden">
-                <div
-                  onMouseEnter={(e) => handleSparklineHover(e, pass.passNumber)}
-                  onMouseLeave={() => setShowTooltip(null)}
-                  className="cursor-pointer hover:bg-white/80 rounded-xl p-3 transition-all duration-200 border border-transparent hover:border-blue-200 hover:shadow-sm"
-                >
-                  {renderSparkline(
-                    passData.slice(0, pass.passNumber).map((p) => p.sparklineData.changePercent),
-                    "#3b82f6",
-                    "Change %",
-                  )}
-                </div>
-                <div
-                  onMouseEnter={(e) => handleSparklineHover(e, pass.passNumber)}
-                  onMouseLeave={() => setShowTooltip(null)}
-                  className="cursor-pointer hover:bg-white/80 rounded-xl p-3 transition-all duration-200 border border-transparent hover:border-green-200 hover:shadow-sm"
-                >
-                  {renderSparkline(
-                    passData.slice(0, pass.passNumber).map((p) => p.sparklineData.tensionPercent),
-                    "#10b981",
-                    "Tension %",
-                  )}
-                </div>
-                <div
-                  onMouseEnter={(e) => handleSparklineHover(e, pass.passNumber)}
-                  onMouseLeave={() => setShowTooltip(null)}
-                  className="cursor-pointer hover:bg-white/80 rounded-xl p-3 transition-all duration-200 border border-transparent hover:border-amber-200 hover:shadow-sm"
-                >
-                  {renderSparkline(
-                    passData.slice(0, pass.passNumber).map((p) => p.sparklineData.normalizedLatency),
-                    "#f59e0b",
-                    "Latency",
-                  )}
-                </div>
-                <div
-                  onMouseEnter={(e) => handleSparklineHover(e, pass.passNumber)}
-                  onMouseLeave={() => setShowTooltip(null)}
-                  className="cursor-pointer hover:bg-white/80 rounded-xl p-3 transition-all duration-200 border border-transparent hover:border-red-200 hover:shadow-sm"
-                >
-                  {renderSparkline(
-                    passData.slice(0, pass.passNumber).map((p) => p.sparklineData.previousPassRisk),
-                    "#ef4444",
-                    "Risk %",
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Detailed Metrics (Toggle-aligned) */}
-            {pass.metrics && metricsAligned && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden">
-                <div className="text-center p-2 bg-white/60 rounded-lg">
-                  <div className="text-xs text-muted-foreground font-medium">Punct/100w</div>
-                  <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.punctuationPer100Words.toFixed(1)}</div>
-                </div>
-                <div className="text-center p-2 bg-white/60 rounded-lg">
-                  <div className="text-xs text-muted-foreground font-medium">Sentences</div>
-                  <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.sentences}</div>
-                </div>
-                <div className="text-center p-2 bg-white/60 rounded-lg">
-                  <div className="text-xs text-muted-foreground font-medium">Transitions</div>
-                  <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.transitions}</div>
-                </div>
-                <div className="text-center p-2 bg-white/60 rounded-lg">
-                  <div className="text-xs text-muted-foreground font-medium">Rhythm CV</div>
-                  <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.rhythmCV.toFixed(2)}</div>
-                </div>
-                <div className="text-center p-2 bg-white/60 rounded-lg">
-                  <div className="text-xs text-muted-foreground font-medium">Keywords</div>
-                  <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.keywords}</div>
-                </div>
-                <div className="text-center p-2 bg-white/60 rounded-lg">
-                  <div className="text-xs text-muted-foreground font-medium">Synonym Rate</div>
-                  <div className="text-sm text-foreground font-semibold mt-1">{(pass.metrics.synonymRate * 100).toFixed(1)}%</div>
-                </div>
-                <div className="text-center p-2 bg-white/60 rounded-lg">
-                  <div className="text-xs text-muted-foreground font-medium">Grammar Issues</div>
-                  <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.grammarIssues}</div>
-                </div>
-                <div className="text-center p-2 bg-white/60 rounded-lg">
-                  <div className="text-xs text-muted-foreground font-medium">Edits/100w</div>
-                  <div className="text-sm text-foreground font-semibold mt-1">{pass.metrics.editsPer100Words.toFixed(1)}</div>
-                </div>
-              </div>
-            )}
-          </div>
-          );
-        })}
+        {passData.map(renderPassRow)}
 
         {/* Toggle for metrics alignment */}
         <div className="flex items-center justify-between pt-4 border-t border-border">
