@@ -249,10 +249,47 @@ export default function ProgressTracker({
         </div>
       </CardHeader>
       <CardContent className="space-y-6 p-5">
-        {passData.map((pass) => (
+        {passData.map((pass) => {
+          // Compute simple stage-based progress for this pass
+          const totalStages = pass.stages.length || 1
+          const completedStages = pass.stages.filter((s) => s.status === "completed").length
+          const errorStages = pass.stages.some((s) => s.status === "error")
+          const rawPercent = (completedStages / totalStages) * 100
+          const percent = Math.min(100, Math.max(0, rawPercent))
+
+          return (
           <div key={pass.passNumber} className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-foreground font-semibold">Pass {pass.passNumber}</h4>
+              <div className="space-y-1">
+                <h4 className="text-foreground font-semibold">Pass {pass.passNumber}</h4>
+                {/* Per-pass progress bar */}
+                <div className="w-full max-w-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] text-muted-foreground">
+                      {errorStages
+                        ? "Encountered an error in this pass"
+                        : percent >= 100
+                          ? "Completed"
+                          : `Working through ${totalStages} stages...`}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground font-medium">
+                      {Math.round(percent)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        errorStages
+                          ? "bg-red-500"
+                          : pass.passNumber === currentPass
+                            ? "bg-blue-500"
+                            : "bg-emerald-500"
+                      }`}
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
               {pass.passNumber === currentPass && (
                 <Badge className="bg-blue-100 text-blue-800 border-blue-200 rounded-full px-3 py-1">Current</Badge>
               )}
