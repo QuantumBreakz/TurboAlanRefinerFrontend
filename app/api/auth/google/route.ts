@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Must match the OAuth client in Google Cloud Console that has your redirect URIs
+// (e.g. https://your-domain.vercel.app/api/auth/google/callback). If you get
+// redirect_uri_mismatch, set NEXT_PUBLIC_GOOGLE_CLIENT_ID in Vercel to that client's ID.
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
 

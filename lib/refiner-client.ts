@@ -42,6 +42,7 @@ export interface RefineRequest {
     mode: "inline" | "sidecar"
     verbosity: "low" | "medium" | "high"
   }
+  preset?: string
 }
 
 export interface PassMetrics {
@@ -142,7 +143,7 @@ export class RefinerClient {
         pollTimer = null
       }
       if (ws && ws.readyState !== WebSocket.CLOSED) {
-        try { ws.close() } catch {}
+        try { ws.close() } catch { }
       }
     }
 
@@ -176,23 +177,23 @@ export class RefinerClient {
     }
 
     let buffer = ""
-    
+
     try {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
         const chunk = decoder.decode(value, { stream: true })
-        
+
         buffer += chunk
         const lines = buffer.split("\n")
-        
-        
-        
+
+
+
         // Keep the last line in buffer (might be incomplete)
         buffer = lines.pop() || ""
-        
-        
+
+
 
         for (const raw of lines) {
           let line = raw
@@ -202,21 +203,21 @@ export class RefinerClient {
           if (!line) continue
           // Ignore SSE comments/heartbeats
           if (line.startsWith(":")) continue
-          
+
           // Strip accidental double data: prefix added by proxying layers (e.g., Next.js)
           let cleanLine = line
           if (line.startsWith("data: data: ")) {
             cleanLine = line.replace("data: data: ", "data: ")
-            
+
           }
           // Recognize backend SSE terminal markers - but DON'T exit immediately
           if (cleanLine === 'event: done' || cleanLine === 'event: error' || cleanLine === ': stream-complete' || cleanLine === ': proxy-complete') {
-            
+
             // Emit a corresponding event
             const mapped: any =
               cleanLine === 'event: error' ? { type: 'error', message: 'stream error' } :
-              { type: cleanLine.includes('error') ? 'error' : (cleanLine.includes('done') ? 'complete' : 'stream_end') }
-            try { onEvent(mapped) } catch {}
+                { type: cleanLine.includes('error') ? 'error' : (cleanLine.includes('done') ? 'complete' : 'stream_end') }
+            try { onEvent(mapped) } catch { }
             // DON'T call stopRealtime() or return here! Let the stream process all buffered events first
             continue  // Skip to next line in this iteration
           }
@@ -228,95 +229,95 @@ export class RefinerClient {
             const anyEvent: any = JSON.parse(payload)
             // First event from backend is job id => open WS
             if (anyEvent.type === "job" && anyEvent.jobId && !jobId) {
-                jobId = anyEvent.jobId
-                
-                // Try to open WS to backend directly (bypass Next.js)
-                try {
-                  // CRITICAL FIX: Use actual backend URL for WebSocket, not Next.js proxy
-                  // If NEXT_PUBLIC_REFINER_BACKEND_WS_URL is set, use it
-                  // Otherwise, derive from NEXT_PUBLIC_REFINER_BACKEND_URL
-                  // Never use this.baseUrl (/api) for WebSocket as it's the Next.js proxy
-                  let backend = process.env.NEXT_PUBLIC_REFINER_BACKEND_WS_URL
-                  if (!backend) {
-                    // Fallback to deriving from backend URL
-                    backend = process.env.NEXT_PUBLIC_REFINER_BACKEND_URL || ""
-                  }
-                  
-                  if (backend) {
-                    // Detect if page is HTTPS or if we're in production (Vercel)
-                    const isSecure = typeof window !== "undefined" && window.location.protocol === "https:"
-                    const isProduction = process.env.NODE_ENV === "production" || 
-                                         (typeof window !== "undefined" && window.location.hostname.includes("vercel.app"))
-                    
-                    // CRITICAL FIX: In production or HTTPS, ALWAYS use wss:// for CSP compliance
-                    let wsBase = backend.replace(/\/$/, "")
-                    
-                    // Remove any existing protocol
-                    wsBase = wsBase.replace(/^(https?|wss?):\/\//, "")
-                    
-                    // In production or HTTPS, always use wss://
-                    if (isSecure || isProduction) {
-                      wsBase = `wss://${wsBase}`
-                    } else {
-                      // Development: use ws:// for HTTP
-                      wsBase = `ws://${wsBase}`
-                    }
-                    
-                    const wsUrl = `${wsBase}/ws/progress/${jobId}`
-                    
-                    // Small delay to ensure backend is ready
-                    await new Promise(resolve => setTimeout(resolve, 100))
-                    
-                    ws = new WebSocket(wsUrl)
-                    let wsConnected = false
-                    
-                    ws.onopen = () => {
-                      wsConnected = true
-                      console.log(`WebSocket connected for job ${jobId}`)
-                    }
-                    
-                    ws.onmessage = (m) => {
-                      try {
-                        const e = JSON.parse(String(m.data))
-                        if (e && e.type) {
-                          // Ignore heartbeat messages to reduce noise
-                          if (e.type !== "heartbeat") {
-                          onEvent(e)
-                          }
-                          // Don't stop here - stream cleanup handles it
-                        }
-                      } catch (err) {
-                        console.warn("Failed to parse WebSocket message:", err)
-                      }
-                    }
-                    
-                    ws.onerror = (error) => {
-                      console.warn(`WebSocket error for job ${jobId}:`, error)
-                      // Only fallback to polling if connection never established
-                      if (!wsConnected && !isTerminated && !pollTimer) {
-                        console.log("Falling back to polling due to WebSocket error")
-                        startPolling()
-                      }
-                    }
-                    
-                    ws.onclose = (closeEvent) => {
-                      console.log(`WebSocket closed for job ${jobId}, code: ${closeEvent.code}, reason: ${closeEvent.reason}`)
-                      wsConnected = false
-                      // Only poll on abnormal close (not normal closure) and not terminated
-                      if (!isTerminated && !pollTimer && closeEvent.code !== 1000 && closeEvent.code !== 1001) {
-                        console.log("Falling back to polling due to abnormal WebSocket close")
-                        startPolling()
-                      }
-                    }
+              jobId = anyEvent.jobId
+
+              // Try to open WS to backend directly (bypass Next.js)
+              try {
+                // CRITICAL FIX: Use actual backend URL for WebSocket, not Next.js proxy
+                // If NEXT_PUBLIC_REFINER_BACKEND_WS_URL is set, use it
+                // Otherwise, derive from NEXT_PUBLIC_REFINER_BACKEND_URL
+                // Never use this.baseUrl (/api) for WebSocket as it's the Next.js proxy
+                let backend = process.env.NEXT_PUBLIC_REFINER_BACKEND_WS_URL
+                if (!backend) {
+                  // Fallback to deriving from backend URL
+                  backend = process.env.NEXT_PUBLIC_REFINER_BACKEND_URL || ""
+                }
+
+                if (backend) {
+                  // Detect if page is HTTPS or if we're in production (Vercel)
+                  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:"
+                  const isProduction = process.env.NODE_ENV === "production" ||
+                    (typeof window !== "undefined" && window.location.hostname.includes("vercel.app"))
+
+                  // CRITICAL FIX: In production or HTTPS, ALWAYS use wss:// for CSP compliance
+                  let wsBase = backend.replace(/\/$/, "")
+
+                  // Remove any existing protocol
+                  wsBase = wsBase.replace(/^(https?|wss?):\/\//, "")
+
+                  // In production or HTTPS, always use wss://
+                  if (isSecure || isProduction) {
+                    wsBase = `wss://${wsBase}`
                   } else {
-                    // No backend URL exposed for WS, fallback
-                    console.log("No backend WebSocket URL configured, using polling")
-                    if (!isTerminated && !pollTimer) startPolling()
+                    // Development: use ws:// for HTTP
+                    wsBase = `ws://${wsBase}`
                   }
-                } catch {
-                  
+
+                  const wsUrl = `${wsBase}/ws/progress/${jobId}`
+
+                  // Small delay to ensure backend is ready
+                  await new Promise(resolve => setTimeout(resolve, 100))
+
+                  ws = new WebSocket(wsUrl)
+                  let wsConnected = false
+
+                  ws.onopen = () => {
+                    wsConnected = true
+                    console.log(`WebSocket connected for job ${jobId}`)
+                  }
+
+                  ws.onmessage = (m) => {
+                    try {
+                      const e = JSON.parse(String(m.data))
+                      if (e && e.type) {
+                        // Ignore heartbeat messages to reduce noise
+                        if (e.type !== "heartbeat") {
+                          onEvent(e)
+                        }
+                        // Don't stop here - stream cleanup handles it
+                      }
+                    } catch (err) {
+                      console.warn("Failed to parse WebSocket message:", err)
+                    }
+                  }
+
+                  ws.onerror = (error) => {
+                    console.warn(`WebSocket error for job ${jobId}:`, error)
+                    // Only fallback to polling if connection never established
+                    if (!wsConnected && !isTerminated && !pollTimer) {
+                      console.log("Falling back to polling due to WebSocket error")
+                      startPolling()
+                    }
+                  }
+
+                  ws.onclose = (closeEvent) => {
+                    console.log(`WebSocket closed for job ${jobId}, code: ${closeEvent.code}, reason: ${closeEvent.reason}`)
+                    wsConnected = false
+                    // Only poll on abnormal close (not normal closure) and not terminated
+                    if (!isTerminated && !pollTimer && closeEvent.code !== 1000 && closeEvent.code !== 1001) {
+                      console.log("Falling back to polling due to abnormal WebSocket close")
+                      startPolling()
+                    }
+                  }
+                } else {
+                  // No backend URL exposed for WS, fallback
+                  console.log("No backend WebSocket URL configured, using polling")
                   if (!isTerminated && !pollTimer) startPolling()
                 }
+              } catch {
+
+                if (!isTerminated && !pollTimer) startPolling()
+              }
             }
             onEvent(anyEvent as ProcessingEvent)
             // Don't stop here - let the stream finish naturally
@@ -325,10 +326,10 @@ export class RefinerClient {
           }
         }
       }
-      
+
       // Process any remaining buffer
       if (buffer.trim()) {
-        
+
         const lines = buffer.split("\n")
         for (const raw of lines) {
           const line = raw.trim()
@@ -339,12 +340,12 @@ export class RefinerClient {
             onEvent(event as ProcessingEvent)
             // Don't stop here - cleanup happens in finally block
           } catch (e) {
-            
+
           }
         }
       }
     } finally {
-      
+
       stopRealtime()
       reader.releaseLock()
     }

@@ -363,19 +363,26 @@ export default function DiffViewer({ fileId, fileName, availablePasses }: DiffVi
               <label className="text-muted-foreground text-sm font-medium">From Pass:</label>
               <Select
                 value={fromPass.toString()}
-                onValueChange={(value) => setFromPass(Number.parseInt(value))}
+                onValueChange={(value) => {
+                  const newFrom = Number.parseInt(value)
+                  setFromPass(newFrom)
+                  if (newFrom >= toPass) {
+                    const nextAvailable = passes.find(p => p > newFrom)
+                    if (nextAvailable) setToPass(nextAvailable)
+                  }
+                }}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {passes
-                    .filter((pass) => pass < toPass)
+                    .filter((pass) => pass !== Math.max(...passes))
                     .map((pass) => (
                       <SelectItem key={pass} value={pass.toString()}>
-                  Pass {pass}
+                        Pass {pass}
                       </SelectItem>
-              ))}
+                    ))}
                 </SelectContent>
               </Select>
           </div>
@@ -384,19 +391,26 @@ export default function DiffViewer({ fileId, fileName, availablePasses }: DiffVi
               <label className="text-muted-foreground text-sm font-medium">To Pass:</label>
               <Select
                 value={toPass.toString()}
-                onValueChange={(value) => setToPass(Number.parseInt(value))}
+                onValueChange={(value) => {
+                  const newTo = Number.parseInt(value)
+                  setToPass(newTo)
+                  if (newTo <= fromPass) {
+                    const prevAvailable = [...passes].reverse().find(p => p < newTo)
+                    if (prevAvailable) setFromPass(prevAvailable)
+                  }
+                }}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-              {passes
-                .filter((pass) => pass > fromPass)
-                .map((pass) => (
+                  {passes
+                    .filter((pass) => pass !== Math.min(...passes))
+                    .map((pass) => (
                       <SelectItem key={pass} value={pass.toString()}>
-                    Pass {pass}
+                        Pass {pass}
                       </SelectItem>
-                ))}
+                    ))}
                 </SelectContent>
               </Select>
           </div>
