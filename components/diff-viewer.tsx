@@ -377,7 +377,6 @@ export default function DiffViewer({ fileId, fileName, availablePasses }: DiffVi
                 </SelectTrigger>
                 <SelectContent>
                   {passes
-                    .filter((pass) => pass !== Math.max(...passes))
                     .map((pass) => (
                       <SelectItem key={pass} value={pass.toString()}>
                         Pass {pass}
@@ -405,7 +404,6 @@ export default function DiffViewer({ fileId, fileName, availablePasses }: DiffVi
                 </SelectTrigger>
                 <SelectContent>
                   {passes
-                    .filter((pass) => pass !== Math.min(...passes))
                     .map((pass) => (
                       <SelectItem key={pass} value={pass.toString()}>
                         Pass {pass}

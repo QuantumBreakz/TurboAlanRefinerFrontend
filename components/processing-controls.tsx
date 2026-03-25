@@ -84,6 +84,7 @@ export default function ProcessingControls() {
     setSettings(prev => ({
       ...prev,
       preset: presetKey,
+      passes: preset.passes,
     }))
   }
 
