@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "record_type": "retrospective_ledger_manifest",
+  "provenance": "Generated from committed Git history; not original coding-agent session logs.",
+  "generated_on": "2026-09-26",
+  "source_ref_scope": "all reachable commits at generation time",
+  "commit_count": 55,
+  "first_commit": "24893a30ec0da923ec0a78b40939612f8db7ead0",
+  "last_commit": "50db0aa24a0d95d07797c68818c2d17aa6bb06ad",
+  "files": {
+    "commit-ledger.jsonl": {
+      "sha256": "efe9b791dd9c126a582aea3b85dc504f168cdcfaf521ea33493be29a30a3a137",
+      "record_count": 55,
+      "format": "JSON Lines"
+    }
+  }
+}
+
