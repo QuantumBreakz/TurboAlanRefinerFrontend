@@ -61,3 +61,9 @@ pnpm start
 
 ## Testing
 - Use browser DevTools to confirm SSE frames under Network → refine/run → EventStream.
+
+## Write-ups
+
+- [Streaming LLM output through a Next.js proxy](https://aliahmed.si/blog/nextjs-sse-proxy-streaming/)
+
+By [Ali Ahmed](https://aliahmed.si), AI engineer.
